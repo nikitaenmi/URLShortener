@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	db "urlShortener/internal/database"
-	"urlShortener/internal/database/models"
 
+	"github.com/nikitaenmi/URLShortener/internal/database"
+	"github.com/nikitaenmi/URLShortener/internal/database/models"
 	"github.com/teris-io/shortid"
 )
 
@@ -36,7 +36,7 @@ func ShortenURL(w http.ResponseWriter, r *http.Request) {
 		OriginalURL: request.URL,
 		ShortCode:   shortCode,
 	}
-	if err := db.Migration().Create(&link).Error; err != nil {
+	if err := database.Migration().Create(&link).Error; err != nil {
 		http.Error(w, "Ошибка сохранения в базу данных", http.StatusInternalServerError)
 		return
 	}

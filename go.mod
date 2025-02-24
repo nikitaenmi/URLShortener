@@ -1,4 +1,4 @@
-module urlShortener
+module github.com/nikitaenmi/URLShortener
 
 go 1.22.4
 
