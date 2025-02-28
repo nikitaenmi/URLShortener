@@ -25,7 +25,7 @@ func ShortenURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Генерация короткого кода
-	shortCode, err := shortid.Generate()
+	GeneratedCode, err := shortid.Generate()
 	if err != nil {
 		http.Error(w, "Ошибка генерации кода", http.StatusInternalServerError)
 		return
@@ -33,19 +33,19 @@ func ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	// Сохранение в базу данных
 	link := models.Link{
-		OriginalURL: request.URL,
-		ShortCode:   shortCode,
+		OriginalURL:   request.URL,
+		GeneratedCode: GeneratedCode,
 	}
 	if err := database.Migration().Create(&link).Error; err != nil {
 		http.Error(w, "Ошибка сохранения в базу данных", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println(shortCode)
+	fmt.Println(GeneratedCode)
 
 	// Возвращаем короткую ссылку
 	response := map[string]string{
-		"short_url": "http://localhost:8080/" + shortCode,
+		"short_url": "http://localhost:8080/" + GeneratedCode,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

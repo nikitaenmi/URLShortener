@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -10,15 +11,22 @@ import (
 	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers/shorten"
 )
 
+const localhost string = ":8080"
+
 func main() {
-	database.Migration()
+	db := database.Migration()
+
+	repo := &redirect.UrlDB{DB: db}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	http.HandleFunc("/shorten", shorten.ShortenURL)
-	http.HandleFunc("/", redirect.RedirectURL)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		redirect.RedirectURL(w, r, repo, logger)
+	})
 
-	fmt.Println("Сервер запущен")
-
-	err := http.ListenAndServe(":8080", nil)
+	slog.Info("Сервер Запущен")
+	err := http.ListenAndServe(localhost, nil)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
