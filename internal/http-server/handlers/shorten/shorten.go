@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/nikitaenmi/URLShortener/internal/database"
-	"github.com/nikitaenmi/URLShortener/internal/database/models"
 	"github.com/teris-io/shortid"
 )
 
@@ -30,18 +28,20 @@ func ShortenURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка генерации кода", http.StatusInternalServerError)
 		return
 	}
+	// TO DO: architecture
 
-	// Сохранение в базу данных
-	link := models.Link{
-		OriginalURL:   request.URL,
-		GeneratedCode: GeneratedCode,
-	}
-	if err := database.Migration().Create(&link).Error; err != nil {
-		http.Error(w, "Ошибка сохранения в базу данных", http.StatusInternalServerError)
-		return
-	}
+	// // Сохранение в базу данных
+	// link := models.Link{
+	// 	OriginalURL:   request.URL,
+	// 	GeneratedCode: GeneratedCode,
+	// }
 
-	fmt.Println(GeneratedCode)
+	// if err := database.Migration(cfg.Database).Create(&link).Error; err != nil {
+	// 	http.Error(w, "Ошибка сохранения в базу данных", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// fmt.Println(GeneratedCode)
 
 	// Возвращаем короткую ссылку
 	response := map[string]string{
