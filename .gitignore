@@ -1,3 +1,2 @@
-data/secrets.go
 docker-compose.yml
-config/local.yaml
+.env
