@@ -15,7 +15,7 @@ type UrlDB struct {
 func (r *UrlDB) FinderOriginalCode(generatedCode string) (*models.Link, error) { // по короткому коду, который был сгенерированный, возращает оригинальную ссылку
 	var link models.Link
 
-	result := r.DB.Where("short_code = ?", generatedCode).First(&link)
+	result := r.DB.Where("generated_code = ?", generatedCode).First(&link)
 	if result.Error != nil {
 		return nil, result.Error
 	}
