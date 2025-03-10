@@ -12,7 +12,7 @@ import (
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/database"
 	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers/redirect"
-	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers/shorten"
+	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers/shortener"
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	http.HandleFunc("/shorten", shorten.ShortenURL)
+	http.HandleFunc("/shortener", shortener.ShortenerURL)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		redirect.RedirectURL(w, r, repo, logger)
 	})

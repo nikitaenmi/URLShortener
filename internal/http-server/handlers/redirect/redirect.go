@@ -27,21 +27,21 @@ type Finder interface {
 	FinderOriginalCode(shortCode string) (*models.Link, error)
 }
 
-type Logg interface {
+type Logger interface {
 	Info(msg string, args ...any)
 	Error(msg string, args ...any)
 }
 
-func RedirectURL(w http.ResponseWriter, r *http.Request, repo Finder, log Logg) {
-	generatedCode := r.URL.Path[1:] // Извлекаем сгенерированный код из URL, когда пользовател отправил предоставленную короткую ссылку
+func RedirectURL(w http.ResponseWriter, r *http.Request, repo Finder, log Logger) {
+	shortID := r.URL.Path[1:] // Извлекаем сгенерированный код из URL, когда пользовател отправил предоставленную короткую ссылку
 
-	link, err := repo.FinderOriginalCode(generatedCode)
+	link, err := repo.FinderOriginalCode(shortID)
 	if err != nil {
-		log.Error("Ссылка не найдена", slog.String("short_code", generatedCode), slog.Any("error", err))
+		log.Error("Ссылка не найдена", slog.String("shortID", shortID), slog.Any("error", err))
 		http.Error(w, "Ссылка не найдена", http.StatusNotFound)
 		return
 	}
 
-	log.Info("Перенаправление", slog.String("short_code", generatedCode), slog.String("original_url", link.OriginalURL))
+	log.Info("Перенаправление", slog.String("shortID", shortID), slog.String("original_url", link.OriginalURL))
 	http.Redirect(w, r, link.OriginalURL, http.StatusMovedPermanently)
 }

@@ -1,4 +1,4 @@
-package shorten
+package shortener
 
 import (
 	"encoding/json"
@@ -12,11 +12,18 @@ import (
 	"github.com/nikitaenmi/URLShortener/internal/database"
 	"github.com/nikitaenmi/URLShortener/internal/database/models"
 	"github.com/teris-io/shortid"
+	"gorm.io/gorm"
 )
 
+type UrlDB struct {
+	DB *gorm.DB
+}
 
+func (r *UrlDB) Create(link *models.Link) error {
+	return r.DB.Create(link).Error
+}
 
-func ShortenURL(w http.ResponseWriter, r *http.Request) {
+func ShortenerURL(w http.ResponseWriter, r *http.Request) {
 	var cfg config.App
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -36,9 +43,9 @@ func ShortenURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Генерация короткого кода
-	GeneratedCode, err := shortid.Generate()
+	ShortID, err := shortid.Generate()
 	if err != nil {
-		http.Error(w, "Ошибка генерации кода", http.StatusInternalServerError)
+		http.Error(w, "Ошибка генерации короткого ID", http.StatusInternalServerError)
 		return
 	}
 	// TO DO: architecture
@@ -46,7 +53,7 @@ func ShortenURL(w http.ResponseWriter, r *http.Request) {
 	// Сохранение в базу данных
 	link := models.Link{
 		OriginalURL:   request.URL,
-		GeneratedCode: GeneratedCode,
+		GeneratedCode: ShortID,
 	}
 
 	// Создаем подключение к базе данных
@@ -60,11 +67,11 @@ func ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Link created successfully!")
 
-	fmt.Println(GeneratedCode)
+	fmt.Println(ShortID)
 
 	// Возвращаем короткую ссылку
 	response := map[string]string{
-		"short_url": "http://localhost:8080/" + GeneratedCode,
+		"short_url": "http://localhost:8080/" + ShortID,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
