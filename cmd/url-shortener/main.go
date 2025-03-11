@@ -11,6 +11,7 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/database"
+	"github.com/nikitaenmi/URLShortener/internal/database/models"
 	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers/redirect"
 	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers/shortener"
 )
@@ -24,16 +25,19 @@ func main() {
 
 	db := database.Migration(cfg.Database)
 
-	repo := &redirect.UrlDB{DB: db}
+	repo := &models.UrlDB{DB: db}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	http.HandleFunc("/shortener", shortener.ShortenerURL)
+	http.HandleFunc("/shortener", func(w http.ResponseWriter, r *http.Request) {
+		shortener.ShortenerURL(w, r, cfg)
+	})
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		redirect.RedirectURL(w, r, repo, logger)
 	})
 
-	slog.Info("Сервер запущен")
+	slog.Info("Server is running")
 	err = http.ListenAndServe(fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port), nil)
 	if err != nil {
 		fmt.Println(err)

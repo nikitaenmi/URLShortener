@@ -3,10 +3,8 @@ package shortener
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
-	"github.com/caarlos0/env/v11"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/database"
@@ -23,37 +21,30 @@ func (r *UrlDB) Create(link *models.Link) error {
 	return r.DB.Create(link).Error
 }
 
-func ShortenerURL(w http.ResponseWriter, r *http.Request) {
-	var cfg config.App
-	err := env.Parse(&cfg)
-	if err != nil {
-		log.Fatal(".env not found")
-	}
-
+func ShortenerURL(w http.ResponseWriter, r *http.Request, cfg config.App) {
 	var request struct {
 		URL string `json:"url"`
 	}
 
 	// Декодируем JSON-запрос
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Неверный запрос", http.StatusBadRequest)
+		http.Error(w, "Invalid request", http.StatusBadRequest)
 		fmt.Println(err)
 		fmt.Println(http.StatusBadRequest)
 		return
 	}
 
-	// Генерация короткого кода
-	ShortID, err := shortid.Generate()
+	// Генерация алиаса для URL
+	aliace, err := shortid.Generate()
 	if err != nil {
-		http.Error(w, "Ошибка генерации короткого ID", http.StatusInternalServerError)
+		http.Error(w, "Error generating alias", http.StatusInternalServerError)
 		return
 	}
-	// TO DO: architecture
 
 	// Сохранение в базу данных
 	link := models.Link{
-		OriginalURL:   request.URL,
-		GeneratedCode: ShortID,
+		OriginalURL: request.URL,
+		Aliace:      aliace,
 	}
 
 	// Создаем подключение к базе данных
@@ -66,12 +57,11 @@ func ShortenerURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("Link created successfully!")
-
-	fmt.Println(ShortID)
+	fmt.Println(aliace)
 
 	// Возвращаем короткую ссылку
 	response := map[string]string{
-		"short_url": "http://localhost:8080/" + ShortID,
+		"short_url": fmt.Sprintf("http://%s:%s/%s", cfg.Server.Host, cfg.Server.Port, aliace),
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
