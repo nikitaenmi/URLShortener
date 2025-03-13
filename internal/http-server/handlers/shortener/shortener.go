@@ -9,19 +9,19 @@ import (
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/database"
 	"github.com/nikitaenmi/URLShortener/internal/database/models"
-	"github.com/teris-io/shortid"
-	"gorm.io/gorm"
 )
 
-type UrlDB struct {
-	DB *gorm.DB
+// Интерфейс для генерации алиасов
+type Generater interface {
+	Generate() (string, error)
 }
 
-func (r *UrlDB) Create(link *models.Link) error {
-	return r.DB.Create(link).Error
+type Logger interface {
+	Info(msg string, args ...any)
+	Error(msg string, args ...any)
 }
 
-func ShortenerURL(w http.ResponseWriter, r *http.Request, cfg config.App) {
+func ShortenerURL(w http.ResponseWriter, r *http.Request, cfg config.App, gen Generater, log Logger) {
 	var request struct {
 		URL string `json:"url"`
 	}
@@ -29,39 +29,38 @@ func ShortenerURL(w http.ResponseWriter, r *http.Request, cfg config.App) {
 	// Декодируем JSON-запрос
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
-		fmt.Println(err)
-		fmt.Println(http.StatusBadRequest)
+		log.Error("Invalid request", err)
 		return
 	}
 
 	// Генерация алиаса для URL
-	aliace, err := shortid.Generate()
+	alias, err := gen.Generate()
 	if err != nil {
 		http.Error(w, "Error generating alias", http.StatusInternalServerError)
+		log.Error("Error generating alias: %v\n", err)
 		return
 	}
 
 	// Сохранение в базу данных
 	link := models.Link{
 		OriginalURL: request.URL,
-		Aliace:      aliace,
+		Alias:       alias,
 	}
 
-	// Создаем подключение к базе данных
+	// Создаинтерфейсем подключение к базе данных
 	db := database.Migration(cfg.Database)
 
 	// Используем подключение для выполнения операций
 	if err := db.Create(&link).Error; err != nil {
-		fmt.Println("Failed to create link:", err)
+		log.Error("Failed to create link:", err)
 		return
 	}
 
-	fmt.Println("Link created successfully!")
-	fmt.Println(aliace)
+	log.Info("Link created successfully!", alias)
 
 	// Возвращаем короткую ссылку
 	response := map[string]string{
-		"short_url": fmt.Sprintf("http://%s:%s/%s", cfg.Server.Host, cfg.Server.Port, aliace),
+		"short_url": fmt.Sprintf("http://%s:%s/%s", cfg.Server.Host, cfg.Server.Port, alias),
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

@@ -27,20 +27,22 @@ func main() {
 
 	repo := &models.UrlDB{DB: db}
 
+	gen := &models.AliasGenerator{}
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	http.HandleFunc("/shortener", func(w http.ResponseWriter, r *http.Request) {
-		shortener.ShortenerURL(w, r, cfg)
+		shortener.ShortenerURL(w, r, cfg, gen, logger)
 	})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		redirect.RedirectURL(w, r, repo, logger)
 	})
 
-	slog.Info("Server is running")
+	logger.Info("Server is running")
 	err = http.ListenAndServe(fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port), nil)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error("Server not running", err)
 		os.Exit(1)
 	}
 }
