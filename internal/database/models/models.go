@@ -1,7 +1,8 @@
 package models
 
 import (
-	"github.com/teris-io/shortid"
+	"errors"
+
 	"gorm.io/gorm"
 )
 
@@ -15,7 +16,7 @@ type UrlDB struct {
 	DB *gorm.DB
 }
 
-func (r *UrlDB) FinderAlias(alias string) (*Link, error) { // по короткому коду, который был сгенерированный, возращает оригинальную ссылку
+func (r *UrlDB) URLFind(alias string) (*Link, error) {
 	var link Link
 
 	result := r.DB.Where("alias = ?", alias).First(&link)
@@ -26,9 +27,16 @@ func (r *UrlDB) FinderAlias(alias string) (*Link, error) { // по коротк�
 	return &link, nil
 }
 
-// ShortIDGenerator структура, метод которой генерит алиас
-type AliasGenerator struct{}
+func (r *UrlDB) Create(URL, alias string) error {
+	link := Link{
+		OriginalURL: URL,
+		Alias:       alias,
+	}
 
-func (g *AliasGenerator) Generate() (string, error) {
-	return shortid.Generate()
+	err := r.DB.Create(&link).Error
+
+	if err != nil {
+		return errors.New("Repo create error: " + err.Error())
+	}
+	return nil
 }

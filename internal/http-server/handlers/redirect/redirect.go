@@ -6,8 +6,8 @@ import (
 	"github.com/nikitaenmi/URLShortener/internal/database/models"
 )
 
-type Finder interface {
-	FinderAlias(alias string) (*models.Link, error)
+type URLFinder interface {
+	URLFind(alias string) (*models.Link, error)
 }
 
 type Logger interface {
@@ -15,10 +15,10 @@ type Logger interface {
 	Error(msg string, args ...any)
 }
 
-func RedirectURL(w http.ResponseWriter, r *http.Request, repo Finder, log Logger) {
+func RedirectURL(w http.ResponseWriter, r *http.Request, repo URLFinder, log Logger) {
 	alias := r.URL.Path[1:]
 
-	link, err := repo.FinderAlias(alias)
+	link, err := repo.URLFind(alias)
 	if err != nil {
 		log.Error("Link not found")
 		http.Error(w, "Link not found", http.StatusNotFound)

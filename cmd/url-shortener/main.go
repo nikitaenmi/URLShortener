@@ -23,16 +23,17 @@ func main() {
 		log.Fatal(".env not found")
 	}
 
-	db := database.Migration(cfg.Database)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+	db, err := database.Connect(cfg.Database)
+	if err != nil {
+		log.Fatal("Database init", err.Error())
+	}
 
 	repo := &models.UrlDB{DB: db}
 
-	gen := &models.AliasGenerator{}
-
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
 	http.HandleFunc("/shortener", func(w http.ResponseWriter, r *http.Request) {
-		shortener.ShortenerURL(w, r, cfg, gen, logger)
+		shortener.ShortenerURL(w, r, repo, cfg.Server, logger)
 	})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +41,7 @@ func main() {
 	})
 
 	logger.Info("Server is running")
-	err = http.ListenAndServe(fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port), nil)
+	err = http.ListenAndServe(fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),nil)
 	if err != nil {
 		logger.Error("Server not running", err)
 		os.Exit(1)

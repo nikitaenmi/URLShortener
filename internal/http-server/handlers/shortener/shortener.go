@@ -5,15 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
-	_ "github.com/joho/godotenv/autoload"
 	"github.com/nikitaenmi/URLShortener/internal/config"
-	"github.com/nikitaenmi/URLShortener/internal/database"
-	"github.com/nikitaenmi/URLShortener/internal/database/models"
+	"github.com/teris-io/shortid"
 )
 
-// Интерфейс для генерации алиасов
-type Generater interface {
-	Generate() (string, error)
+type Creater interface {
+	Create(URL, alias string) error
 }
 
 type Logger interface {
@@ -21,46 +18,35 @@ type Logger interface {
 	Error(msg string, args ...any)
 }
 
-func ShortenerURL(w http.ResponseWriter, r *http.Request, cfg config.App, gen Generater, log Logger) {
+func ShortenerURL(w http.ResponseWriter, r *http.Request, repo Creater, cfg config.Server, log Logger) {
 	var request struct {
 		URL string `json:"url"`
 	}
 
-	// Декодируем JSON-запрос
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		log.Error("Invalid request", err)
 		return
 	}
 
-	// Генерация алиаса для URL
-	alias, err := gen.Generate()
+	alias, err := shortid.Generate()
 	if err != nil {
 		http.Error(w, "Error generating alias", http.StatusInternalServerError)
 		log.Error("Error generating alias: %v\n", err)
 		return
 	}
 
-	// Сохранение в базу данных
-	link := models.Link{
-		OriginalURL: request.URL,
-		Alias:       alias,
-	}
-
-	// Создаинтерфейсем подключение к базе данных
-	db := database.Migration(cfg.Database)
-
-	// Используем подключение для выполнения операций
-	if err := db.Create(&link).Error; err != nil {
-		log.Error("Failed to create link:", err)
+	err = repo.Create(request.URL, alias)
+	if err != nil {
+		http.Error(w, "Creating error", http.StatusInternalServerError)
+		log.Error("Error generating alias: %v\n", err)
 		return
 	}
 
-	log.Info("Link created successfully!", alias)
+	log.Info("Link created successfully!", "alias", alias)
 
-	// Возвращаем короткую ссылку
 	response := map[string]string{
-		"short_url": fmt.Sprintf("http://%s:%s/%s", cfg.Server.Host, cfg.Server.Port, alias),
+		"short_url": fmt.Sprintf("http://%s:%s/%s", cfg.Host, cfg.Port, alias),
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
