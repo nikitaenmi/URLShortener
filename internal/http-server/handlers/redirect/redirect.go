@@ -3,11 +3,11 @@ package redirect
 import (
 	"net/http"
 
-	"github.com/nikitaenmi/URLShortener/internal/database/models"
+	"github.com/nikitaenmi/URLShortener/internal/domain"
 )
 
 type URLFinder interface {
-	URLFind(alias string) (*models.Link, error)
+	URLFind(alias string) (*domain.Link, error)
 }
 
 type Logger interface {

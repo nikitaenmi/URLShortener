@@ -1,23 +1,18 @@
-package models
+package repository
 
 import (
 	"errors"
 
+	"github.com/nikitaenmi/URLShortener/internal/domain"
 	"gorm.io/gorm"
 )
-
-type Link struct {
-	ID          int `gorm:"primarykey"`
-	OriginalURL string
-	Alias       string
-}
 
 type UrlDB struct {
 	DB *gorm.DB
 }
 
-func (r *UrlDB) URLFind(alias string) (*Link, error) {
-	var link Link
+func (r *UrlDB) URLFind(alias string) (*domain.Link, error) {
+	var link domain.Link
 
 	result := r.DB.Where("alias = ?", alias).First(&link)
 	if result.Error != nil {
@@ -28,7 +23,7 @@ func (r *UrlDB) URLFind(alias string) (*Link, error) {
 }
 
 func (r *UrlDB) Create(URL, alias string) error {
-	link := Link{
+	link := domain.Link{
 		OriginalURL: URL,
 		Alias:       alias,
 	}
