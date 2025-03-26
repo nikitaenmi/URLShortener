@@ -28,7 +28,7 @@ func ShortenerURL(w http.ResponseWriter, r *http.Request, repo Creater, cfg conf
 		log.Error("Invalid request", err)
 		return
 	}
-
+	
 	alias, err := shortid.Generate()
 	if err != nil {
 		http.Error(w, "Error generating alias", http.StatusInternalServerError)
