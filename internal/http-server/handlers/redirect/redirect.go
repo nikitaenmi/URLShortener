@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/nikitaenmi/URLShortener/internal/domain"
+	"github.com/nikitaenmi/URLShortener/internal/services"
 )
 
 type URLFinder interface {
@@ -18,7 +19,7 @@ type Logger interface {
 func RedirectURL(w http.ResponseWriter, r *http.Request, repo URLFinder, log Logger) {
 	alias := r.URL.Path[1:]
 
-	link, err := repo.URLFind(alias)
+	link, err := services.Redirect(alias, repo)
 	if err != nil {
 		log.Error("Link not found")
 		http.Error(w, "Link not found", http.StatusNotFound)
