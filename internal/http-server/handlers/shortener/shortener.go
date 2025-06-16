@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/nikitaenmi/URLShortener/internal/config"
-	"github.com/teris-io/shortid"
+	"github.com/nikitaenmi/URLShortener/internal/services"
 )
 
 type Creater interface {
@@ -28,18 +28,11 @@ func ShortenerURL(w http.ResponseWriter, r *http.Request, repo Creater, cfg conf
 		log.Error("Invalid request", err)
 		return
 	}
-	
-	alias, err := shortid.Generate()
-	if err != nil {
-		http.Error(w, "Error generating alias", http.StatusInternalServerError)
-		log.Error("Error generating alias: %v\n", err)
-		return
-	}
 
-	err = repo.Create(request.URL, alias)
+	alias, err := services.Shortener(request.URL, repo)
 	if err != nil {
-		http.Error(w, "Creating error", http.StatusInternalServerError)
-		log.Error("Error generating alias: %v\n", err)
+		log.Error("Shortener failed", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
