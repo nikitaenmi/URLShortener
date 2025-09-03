@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 	_ "github.com/joho/godotenv/autoload"
@@ -40,10 +41,17 @@ func main() {
 		redirect.RedirectURL(w, r, repo, logger)
 	})
 
-	logger.Info("Server is running")
-	err = http.ListenAndServe(fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port), nil)
+	srv := &http.Server{
+		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
+		ReadTimeout:  time.Duration(cfg.Server.Timeout) * time.Second,
+		WriteTimeout: time.Duration(cfg.Server.Timeout) * time.Second,
+		IdleTimeout:  time.Duration(cfg.Server.IdleTimeout) * time.Second,
+	}
+
+	logger.Info("Server is running", slog.String("address", srv.Addr))
+	err = srv.ListenAndServe()
 	if err != nil {
-		logger.Error("Server not running", err)
+		logger.Error("Server not running", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 }
