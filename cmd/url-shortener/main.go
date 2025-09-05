@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/caarlos0/env/v11"
 	_ "github.com/joho/godotenv/autoload"
@@ -43,9 +42,9 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
-		ReadTimeout:  time.Duration(cfg.Server.Timeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.Server.Timeout) * time.Second,
-		IdleTimeout:  time.Duration(cfg.Server.IdleTimeout) * time.Second,
+		ReadTimeout:  cfg.Server.Timeout,
+		WriteTimeout: cfg.Server.Timeout,
+		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
 
 	logger.Info("Server is running", slog.String("address", srv.Addr))
