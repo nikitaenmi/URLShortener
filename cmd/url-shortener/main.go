@@ -42,8 +42,8 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
-		ReadTimeout:  cfg.Server.TimeoutRead,
-		WriteTimeout: cfg.Server.TimeoutWrite,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
 		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
 

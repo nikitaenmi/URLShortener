@@ -5,7 +5,7 @@ import "time"
 type Server struct {
 	Host         string        `env:"SERVER_HOST"`
 	Port         string        `env:"SERVER_PORT"`
-	TimeoutRead  time.Duration `env:"SERVER_TIMEOUT_R_S"`
-	TimeoutWrite time.Duration `env:"SERVER_TIMEOUT_W_S"`
+	ReadTimeout  time.Duration `env:"SERVER_READ_TIMEOUT_SECOND"`
+	WriteTimeout time.Duration `env:"SERVER_WRITE_TIMEOUT_SECOND"`
 	IdleTimeout  time.Duration `env:"SERVER_IDLETIMEOUT_S"`
 }
