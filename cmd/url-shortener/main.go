@@ -40,10 +40,17 @@ func main() {
 		redirect.RedirectURL(w, r, repo, logger)
 	})
 
-	logger.Info("Server is running")
-	err = http.ListenAndServe(fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port), nil)
+	srv := &http.Server{
+		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+		IdleTimeout:  cfg.Server.IdleTimeout,
+	}
+
+	logger.Info("Server is running", slog.String("address", srv.Addr))
+	err = srv.ListenAndServe()
 	if err != nil {
-		logger.Error("Server not running", err)
+		logger.Error("Server not running", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 }
