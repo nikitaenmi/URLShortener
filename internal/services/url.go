@@ -7,21 +7,25 @@ import (
 	"github.com/teris-io/shortid"
 )
 
-type Creater interface {
-	Create(URL, alias string) error
+type Url struct {
+	repo domain.UrlRepo
 }
 
-type URLFinder interface {
-	URLFind(alias string) (*domain.Link, error)
+func NewUrl(repo domain.UrlRepo) Url {
+	return Url{
+		repo: repo,
+	}
 }
 
-func Shortener(url string, repo Creater) (string, error) {
+func (s *Url) Shortener(url domain.Url) (string, error) {
 	alias, err := shortid.Generate()
 	if err != nil {
 		return "", fmt.Errorf("error generating alias: %w", err)
 	}
 
-	err = repo.Create(url, alias)
+	url.Alias = alias
+	fmt.Println(url)
+	err = s.repo.Create(url)
 	if err != nil {
 		return "", fmt.Errorf("failed writing url and aliase in database: %w", err)
 	}
@@ -29,10 +33,10 @@ func Shortener(url string, repo Creater) (string, error) {
 	return alias, nil
 }
 
-func Redirect(alias string, repo URLFinder) (*domain.Link, error) {
-	link, err := repo.URLFind(alias)
+func (s *Url) Redirect(params domain.URLFilter) (*domain.Url, error) {
+	url, err := s.repo.URLFind(params)
 	if err != nil {
 		return nil, fmt.Errorf("error finding url in database: %w", err)
 	}
-	return link, nil
+	return url, nil
 }

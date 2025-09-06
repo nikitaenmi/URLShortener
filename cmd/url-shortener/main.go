@@ -11,9 +11,9 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/database"
-	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers/redirect"
-	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers/shortener"
+	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers"
 	"github.com/nikitaenmi/URLShortener/internal/repository"
+	"github.com/nikitaenmi/URLShortener/internal/services"
 )
 
 func main() {
@@ -30,15 +30,12 @@ func main() {
 		log.Fatal("Database init", err.Error())
 	}
 
-	repo := &repository.UrlDB{DB: db}
+	repo := repository.NewUrl(db)
+	svc := services.NewUrl(repo)
+	handler := handlers.NewUrl(svc, logger, cfg.Server)
 
-	http.HandleFunc("/shortener", func(w http.ResponseWriter, r *http.Request) {
-		shortener.ShortenerURL(w, r, repo, cfg.Server, logger)
-	})
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		redirect.RedirectURL(w, r, repo, logger)
-	})
+	http.HandleFunc("/shortener", handler.ShortenerURL)
+	http.HandleFunc("/", handler.RedirectURL)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),

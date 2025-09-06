@@ -20,7 +20,7 @@ func Connect(cfg config.Database) (*gorm.DB, error) {
 
 	}
 
-	err = db.AutoMigrate(&domain.Link{})
+	err = db.AutoMigrate(&domain.Url{})
 	if err != nil {
 		return nil, errors.New("Migrate error:" + err.Error())
 	}
