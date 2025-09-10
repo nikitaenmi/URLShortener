@@ -6,22 +6,18 @@ import (
 	"net/http"
 
 	"github.com/nikitaenmi/URLShortener/internal/config"
+	"github.com/nikitaenmi/URLShortener/internal/contracts"
 	"github.com/nikitaenmi/URLShortener/internal/domain"
 	"github.com/nikitaenmi/URLShortener/internal/services"
 )
 
-type Logger interface {
-	Info(msg string, args ...any)
-	Error(msg string, args ...any)
-}
-
 type Url struct {
 	svc services.Url
-	log Logger
+	log contracts.Logger
 	cfg config.Server
 }
 
-func NewUrl(svc services.Url, log Logger, cfg config.Server) Url {
+func NewUrl(svc services.Url, log contracts.Logger, cfg config.Server) Url {
 	return Url{
 		svc: svc,
 		log: log,

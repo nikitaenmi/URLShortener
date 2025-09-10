@@ -1,7 +1,7 @@
 package domain
 
 type Url struct {
-	ID          int `gorm:"primarykey"`
+	ID          int
 	OriginalURL string
 	Alias       string
 }
