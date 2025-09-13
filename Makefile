@@ -3,3 +3,6 @@ prepare-application:
 
 run:
 	go run ./cmd/url-shortener
+
+lint:
+	golangci-lint run

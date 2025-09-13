@@ -12,6 +12,7 @@ import (
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/database"
 	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers"
+	"github.com/nikitaenmi/URLShortener/internal/lib/generator"
 	"github.com/nikitaenmi/URLShortener/internal/repository"
 	"github.com/nikitaenmi/URLShortener/internal/services"
 )
@@ -31,7 +32,13 @@ func main() {
 	}
 
 	repo := repository.NewUrl(db)
-	svc := services.NewUrl(repo)
+
+	aliasGenerator, err := generator.New(cfg.Generator)
+	if err != nil {
+		log.Fatal("Generator init", err.Error())
+	}
+
+	svc := services.NewUrl(repo, aliasGenerator)
 	handler := handlers.NewUrl(svc, logger, cfg.Server)
 
 	http.HandleFunc("/shortener", handler.ShortenerURL)
