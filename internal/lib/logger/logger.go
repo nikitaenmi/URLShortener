@@ -1,4 +1,4 @@
-package contracts
+package logger
 
 type Logger interface {
 	Info(msg string, args ...any)
