@@ -7,21 +7,17 @@ import (
 
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/domain"
+	"github.com/nikitaenmi/URLShortener/internal/lib/logger"
 	"github.com/nikitaenmi/URLShortener/internal/services"
 )
 
-type Logger interface {
-	Info(msg string, args ...any)
-	Error(msg string, args ...any)
-}
-
 type Url struct {
 	svc services.Url
-	log Logger
+	log logger.Logger
 	cfg config.Server
 }
 
-func NewUrl(svc services.Url, log Logger, cfg config.Server) Url {
+func NewUrl(svc services.Url, log logger.Logger, cfg config.Server) Url {
 	return Url{
 		svc: svc,
 		log: log,
@@ -74,5 +70,9 @@ func (h *Url) ShortenerURL(w http.ResponseWriter, r *http.Request) {
 		"short_url": fmt.Sprintf("http://%s:%s/%s", h.cfg.Host, h.cfg.Port, alias),
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		h.log.Error("Shortener failed", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }

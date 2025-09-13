@@ -14,10 +14,8 @@ func Connect(cfg config.Database) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode)), &gorm.Config{})
-
 	if err != nil {
 		return nil, errors.New("Open connection error: " + err.Error())
-
 	}
 
 	err = db.AutoMigrate(&domain.Url{})

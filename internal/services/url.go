@@ -4,21 +4,23 @@ import (
 	"fmt"
 
 	"github.com/nikitaenmi/URLShortener/internal/domain"
-	"github.com/teris-io/shortid"
+	"github.com/nikitaenmi/URLShortener/internal/lib/generator"
 )
 
 type Url struct {
-	repo domain.UrlRepo
+	repo      domain.UrlRepo
+	generator generator.Generator
 }
 
-func NewUrl(repo domain.UrlRepo) Url {
+func NewUrl(repo domain.UrlRepo, generator generator.Generator) Url {
 	return Url{
-		repo: repo,
+		repo:      repo,
+		generator: generator,
 	}
 }
 
-func (s *Url) Shortener(url domain.Url) (string, error) {
-	alias, err := shortid.Generate()
+func (s Url) Shortener(url domain.Url) (string, error) {
+	alias, err := s.generator.Generate()
 	if err != nil {
 		return "", fmt.Errorf("error generating alias: %w", err)
 	}
@@ -33,7 +35,7 @@ func (s *Url) Shortener(url domain.Url) (string, error) {
 	return alias, nil
 }
 
-func (s *Url) Redirect(params domain.URLFilter) (*domain.Url, error) {
+func (s Url) Redirect(params domain.URLFilter) (*domain.Url, error) {
 	url, err := s.repo.URLFind(params)
 	if err != nil {
 		return nil, fmt.Errorf("error finding url in database: %w", err)
