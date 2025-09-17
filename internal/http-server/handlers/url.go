@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 
+	"github.com/labstack/echo/v4"
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/domain"
 	"github.com/nikitaenmi/URLShortener/internal/lib/logger"
@@ -25,54 +26,67 @@ func NewUrl(svc services.Url, log logger.Logger, cfg config.Server) Url {
 	}
 }
 
-func (h *Url) RedirectURL(w http.ResponseWriter, r *http.Request) {
-	alias := r.URL.Path[1:]
+func (h *Url) RedirectURL(c echo.Context) error {
+	ctx := c.Request().Context()
+	alias := c.Param("alias")
 	params := domain.URLFilter{
 		Alias: alias,
 	}
+	
 
-	url, err := h.svc.Redirect(params)
+	url, err := h.svc.Redirect(ctx,params)
 	if err != nil {
-		h.log.Error("Link not found")
-		http.Error(w, "Link not found", http.StatusNotFound)
-		return
+		h.log.Error("Link not found", slog.String("alias", alias), slog.String("error", err.Error()))
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Link not found"})
 	}
 
-	h.log.Info("Redirection")
-	http.Redirect(w, r, url.OriginalURL, http.StatusMovedPermanently)
+	h.log.Info("Redirection", slog.String("alias", alias), slog.String("original_url", url.OriginalURL))
+	return c.Redirect(http.StatusMovedPermanently, url.OriginalURL)
 }
 
-func (h *Url) ShortenerURL(w http.ResponseWriter, r *http.Request) {
+func (h *Url) ShortenerURL(c echo.Context) error {
+	ctx := c.Request().Context()
 	var request struct {
 		OriginalURL string `json:"url"`
 	}
+	
 
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		h.log.Error("Invalid request", err)
-		return
+	if err := c.Bind(&request); err != nil {
+		h.log.Error("Invalid request", slog.String("error", err.Error()))
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 	}
 
 	url := domain.Url{
 		OriginalURL: request.OriginalURL,
 	}
 
-	alias, err := h.svc.Shortener(url)
+	alias, err := h.svc.Shortener(ctx,url)
 	if err != nil {
-		h.log.Error("Shortener failed", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+		h.log.Error("Shortener failed", slog.String("error", err.Error()))
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
-	h.log.Info("Link created successfully!", "alias", alias)
+	h.log.Info("Link created successfully!", slog.String("alias", alias))
 
 	response := map[string]string{
 		"short_url": fmt.Sprintf("http://%s:%s/%s", h.cfg.Host, h.cfg.Port, alias),
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.log.Error("Shortener failed", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+
+	return c.JSON(http.StatusOK, response)
+}
+
+func (h *Url) DeleteURL(c echo.Context) error {
+	ctx := c.Request().Context()
+	alias := c.Param("alias")
+	params := domain.URLFilter{
+		Alias: alias,
 	}
+	err := h.svc.Delete(ctx, params)
+	
+	if err != nil {
+		h.log.Error("Failed to delete URL", slog.String("alias", alias), slog.String("error", err.Error()))
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete URL"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "URL deleted successfully"})
 }

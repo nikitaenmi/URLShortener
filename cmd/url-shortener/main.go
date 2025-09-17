@@ -9,9 +9,11 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/labstack/echo/v4"
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/database"
 	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers"
+	"github.com/nikitaenmi/URLShortener/internal/http-server/middleware"
 	"github.com/nikitaenmi/URLShortener/internal/lib/generator"
 	"github.com/nikitaenmi/URLShortener/internal/repository"
 	"github.com/nikitaenmi/URLShortener/internal/services"
@@ -35,14 +37,19 @@ func main() {
 
 	aliasGenerator, err := generator.New(cfg.Generator)
 	if err != nil {
-		log.Fatal("Generator init", err.Error())
+		log.Fatal("Generatocr init", err.Error())
 	}
 
 	svc := services.NewUrl(repo, aliasGenerator)
 	handler := handlers.NewUrl(svc, logger, cfg.Server)
 
-	http.HandleFunc("/shortener", handler.ShortenerURL)
-	http.HandleFunc("/", handler.RedirectURL)
+	e := echo.New()
+
+	e.Use(middleware.RequestIDMiddleware())
+
+	e.POST("/shortener", handler.ShortenerURL)
+	e.GET("/:alias", handler.RedirectURL)
+	e.DELETE("/:alias", handler.DeleteURL)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
@@ -52,8 +59,8 @@ func main() {
 	}
 
 	logger.Info("Server is running", slog.String("address", srv.Addr))
-	err = srv.ListenAndServe()
-	if err != nil {
+
+	if err := e.StartServer(srv); err != nil {
 		logger.Error("Server not running", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
