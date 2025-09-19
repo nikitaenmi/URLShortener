@@ -1,5 +1,7 @@
 package domain
 
+import "context"
+
 type Url struct {
 	ID          int
 	OriginalURL string
@@ -8,9 +10,11 @@ type Url struct {
 
 type URLFilter struct {
 	Alias string
+	ID    string
 }
 
 type UrlRepo interface {
-	Create(url Url) error
-	URLFind(params URLFilter) (*Url, error)
+	Create(ctx context.Context, url Url) error
+	URLFind(ctx context.Context, params URLFilter) (*Url, error)
+	Delete(ctx context.Context, id URLFilter) error
 }
