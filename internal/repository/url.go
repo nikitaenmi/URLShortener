@@ -47,7 +47,7 @@ func (r Url) Create(ctx context.Context, url domain.Url) error {
 }
 
 func (r Url) Delete(ctx context.Context, params domain.URLFilter) error {
-	result := r.DB.WithContext(ctx).Where("alias = ?", params.Alias).Delete(&domain.Url{})
+	result := r.DB.WithContext(ctx).Where("ID = ?", params.ID).Delete(&domain.Url{})
 	if result.Error != nil {
 		return fmt.Errorf("failed deleting url in database: %w", result.Error)
 	}

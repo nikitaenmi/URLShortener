@@ -9,6 +9,7 @@ import (
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/domain"
 	"github.com/nikitaenmi/URLShortener/internal/lib/logger"
+	slogHandler "github.com/nikitaenmi/URLShortener/internal/lib/logger/slog/handler"
 	"github.com/nikitaenmi/URLShortener/internal/services"
 )
 
@@ -28,13 +29,20 @@ func NewUrl(svc services.Url, log logger.Logger, cfg config.Server) Url {
 
 func (h *Url) RedirectURL(c echo.Context) error {
 	ctx := c.Request().Context()
+
+	reqID, ok := c.Get(slogHandler.RequestIDLogKey).(string)
+	if !ok {
+		reqID = "unknown"
+	}
+	fmt.Printf("ID запроса:")
+	fmt.Printf(reqID)
+
 	alias := c.Param("alias")
 	params := domain.URLFilter{
 		Alias: alias,
 	}
-	
 
-	url, err := h.svc.Redirect(ctx,params)
+	url, err := h.svc.Redirect(ctx, params)
 	if err != nil {
 		h.log.Error("Link not found", slog.String("alias", alias), slog.String("error", err.Error()))
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Link not found"})
@@ -49,7 +57,6 @@ func (h *Url) ShortenerURL(c echo.Context) error {
 	var request struct {
 		OriginalURL string `json:"url"`
 	}
-	
 
 	if err := c.Bind(&request); err != nil {
 		h.log.Error("Invalid request", slog.String("error", err.Error()))
@@ -60,7 +67,7 @@ func (h *Url) ShortenerURL(c echo.Context) error {
 		OriginalURL: request.OriginalURL,
 	}
 
-	alias, err := h.svc.Shortener(ctx,url)
+	alias, err := h.svc.Shortener(ctx, url)
 	if err != nil {
 		h.log.Error("Shortener failed", slog.String("error", err.Error()))
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
@@ -77,14 +84,21 @@ func (h *Url) ShortenerURL(c echo.Context) error {
 
 func (h *Url) DeleteURL(c echo.Context) error {
 	ctx := c.Request().Context()
-	alias := c.Param("alias")
+
+	reqID, ok := c.Get(slogHandler.RequestIDLogKey).(string)
+	if !ok {
+		reqID = "unknown"
+	}
+	fmt.Printf(reqID)
+
+	id := c.Param("id")
 	params := domain.URLFilter{
-		Alias: alias,
+		ID: id,
 	}
 	err := h.svc.Delete(ctx, params)
-	
+
 	if err != nil {
-		h.log.Error("Failed to delete URL", slog.String("alias", alias), slog.String("error", err.Error()))
+		h.log.Error("Failed to delete URL", slog.String("ID", id), slog.String("error", err.Error()))
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete URL"})
 	}
 

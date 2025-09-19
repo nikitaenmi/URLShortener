@@ -10,10 +10,11 @@ type Url struct {
 
 type URLFilter struct {
 	Alias string
+	ID    string
 }
 
 type UrlRepo interface {
 	Create(ctx context.Context, url Url) error
 	URLFind(ctx context.Context, params URLFilter) (*Url, error)
-	Delete(ctx context.Context, params URLFilter) error
+	Delete(ctx context.Context, id URLFilter) error
 }
