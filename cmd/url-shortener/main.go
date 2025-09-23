@@ -47,9 +47,14 @@ func main() {
 
 	e.Use(middleware.RequestIDMiddleware())
 
-	e.POST("/shortener", handler.ShortenerURL)
-	e.GET("/:alias", handler.RedirectURL)
-	e.DELETE("/:alias", handler.DeleteURL)
+	// CRUD - операции
+	e.POST("/api/urls", handler.CreateURL)
+	e.DELETE("/api/urls/:id", handler.DeleteURL)
+	e.GET("/api/urls/:id", handler.GetURL)
+	// e.PUT("/api/urls/:id", handler.PutURL) - изменение параметров ссылки по ID (в работе)
+
+	// Отдельный endpoint для редиректа
+	e.GET("/r/:alias", handler.RedirectURL)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),

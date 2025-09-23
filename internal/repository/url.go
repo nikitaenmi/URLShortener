@@ -32,9 +32,12 @@ func (r Url) URLFind(ctx context.Context, params domain.URLFilter) (*domain.Url,
 
 func (r Url) buildFilterByParams(q *gorm.DB, params domain.URLFilter) *gorm.DB {
 	if params.Alias != "" {
-		q.Where(&domain.Url{Alias: params.Alias})
+		q = q.Where(&domain.Url{Alias: params.Alias})
 	}
 
+	if params.ID != "" {
+		q = q.Where(&domain.Url{ID: params.ID})
+	}
 	return q
 }
 

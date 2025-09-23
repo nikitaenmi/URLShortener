@@ -52,7 +52,7 @@ func (h *Url) RedirectURL(c echo.Context) error {
 	return c.Redirect(http.StatusMovedPermanently, url.OriginalURL)
 }
 
-func (h *Url) ShortenerURL(c echo.Context) error {
+func (h *Url) CreateURL(c echo.Context) error {
 	ctx := c.Request().Context()
 	var request struct {
 		OriginalURL string `json:"url"`
@@ -103,4 +103,23 @@ func (h *Url) DeleteURL(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "URL deleted successfully"})
+}
+
+
+func (h *Url) GetURL(c echo.Context) error {
+	ctx := c.Request().Context()
+	id := c.Param("id")
+
+	params := domain.URLFilter{
+		ID: id,
+	}
+
+	url, err := h.svc.GetByID(ctx, params)
+	if err != nil {
+		h.log.Error("URL not found", slog.String("id", id), slog.String("error", err.Error()))
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "URL not found"})
+	}
+
+	h.log.Info("URL retrieved successfully", slog.String("id", id))
+	return c.JSON(http.StatusOK, url)
 }

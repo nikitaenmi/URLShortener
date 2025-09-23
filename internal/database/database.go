@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/nikitaenmi/URLShortener/internal/config"
-	"github.com/nikitaenmi/URLShortener/internal/domain"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -18,7 +18,7 @@ func Connect(cfg config.Database) (*gorm.DB, error) {
 		return nil, errors.New("Open connection error: " + err.Error())
 	}
 
-	err = db.AutoMigrate(&domain.Url{})
+	err = db.AutoMigrate(&Url{})
 	if err != nil {
 		return nil, errors.New("Migrate error:" + err.Error())
 	}
