@@ -48,13 +48,14 @@ func main() {
 	e.Use(middleware.RequestIDMiddleware())
 
 	// CRUD - операции
-	e.POST("/api/urls", handler.CreateURL)
-	e.DELETE("/api/urls/:id", handler.DeleteURL)
-	e.GET("/api/urls/:id", handler.GetURL)
+	e.POST("/api/urls", handler.Create)
+	e.GET("/api/urls/:id", handler.Get)
+	e.GET("/api/urls", handler.List)
+	e.DELETE("/api/urls/:id", handler.Delete)
 	// e.PUT("/api/urls/:id", handler.PutURL) - изменение параметров ссылки по ID (в работе)
 
 	// Отдельный endpoint для редиректа
-	e.GET("/r/:alias", handler.RedirectURL)
+	e.GET("/r/:alias", handler.Redirect)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),

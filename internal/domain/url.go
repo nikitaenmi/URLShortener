@@ -3,18 +3,19 @@ package domain
 import "context"
 
 type Url struct {
-	ID          string
+	ID          int
 	OriginalURL string
 	Alias       string
 }
 
 type URLFilter struct {
 	Alias string
-	ID    string
+	ID    int
 }
 
 type UrlRepo interface {
 	Create(ctx context.Context, url Url) error
-	URLFind(ctx context.Context, id URLFilter) (*Url, error)
-	Delete(ctx context.Context, id URLFilter) error
+	URLFind(ctx context.Context, params URLFilter) (*Url, error)
+	Delete(ctx context.Context, params URLFilter) error
+	List(ctx context.Context, page, limit int) ([]*Url, int, error)
 }

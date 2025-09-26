@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/nikitaenmi/URLShortener/internal/config"
@@ -27,7 +28,7 @@ func NewUrl(svc services.Url, log logger.Logger, cfg config.Server) Url {
 	}
 }
 
-func (h *Url) RedirectURL(c echo.Context) error {
+func (h *Url) Redirect(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	reqID, ok := c.Get(slogHandler.RequestIDLogKey).(string)
@@ -52,7 +53,7 @@ func (h *Url) RedirectURL(c echo.Context) error {
 	return c.Redirect(http.StatusMovedPermanently, url.OriginalURL)
 }
 
-func (h *Url) CreateURL(c echo.Context) error {
+func (h *Url) Create(c echo.Context) error {
 	ctx := c.Request().Context()
 	var request struct {
 		OriginalURL string `json:"url"`
@@ -82,7 +83,7 @@ func (h *Url) CreateURL(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func (h *Url) DeleteURL(c echo.Context) error {
+func (h *Url) Delete(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	reqID, ok := c.Get(slogHandler.RequestIDLogKey).(string)
@@ -91,24 +92,33 @@ func (h *Url) DeleteURL(c echo.Context) error {
 	}
 	fmt.Printf(reqID)
 
-	id := c.Param("id")
+	idString := c.Param("id")
+	id, err := strconv.Atoi(idString)
+	if err != nil {
+		h.log.Error("Invalid ID format", slog.String("id", idString), slog.String("error", err.Error()))
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid ID format"})
+	}
 	params := domain.URLFilter{
 		ID: id,
 	}
-	err := h.svc.Delete(ctx, params)
+	err = h.svc.Delete(ctx, params)
 
 	if err != nil {
-		h.log.Error("Failed to delete URL", slog.String("ID", id), slog.String("error", err.Error()))
+		h.log.Error("Failed to delete URL", slog.String("id", idString), slog.String("error", err.Error()))
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete URL"})
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "URL deleted successfully"})
 }
 
-
-func (h *Url) GetURL(c echo.Context) error {
+func (h *Url) Get(c echo.Context) error {
 	ctx := c.Request().Context()
-	id := c.Param("id")
+	idString := c.Param("id")
+	id, err := strconv.Atoi(idString)
+	if err != nil {
+		h.log.Error("Invalid ID format", slog.String("id", idString), slog.String("error", err.Error()))
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid ID format"})
+	}
 
 	params := domain.URLFilter{
 		ID: id,
@@ -116,10 +126,48 @@ func (h *Url) GetURL(c echo.Context) error {
 
 	url, err := h.svc.GetByID(ctx, params)
 	if err != nil {
-		h.log.Error("URL not found", slog.String("id", id), slog.String("error", err.Error()))
+		h.log.Error("URL not found", slog.String("id", idString), slog.String("error", err.Error()))
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "URL not found"})
 	}
 
-	h.log.Info("URL retrieved successfully", slog.String("id", id))
+	h.log.Info("URL retrieved successfully", slog.String("id", idString))
 	return c.JSON(http.StatusOK, url)
+}
+
+type URLListResponse struct {
+	URLs  []*domain.Url `json:"urls"`
+	Total int           `json:"total"`
+	Page  int           `json:"page"`
+	Limit int           `json:"limit"`
+}
+
+func (h *Url) List(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	if limit < 1 || limit > 50 {
+		limit = 10
+	}
+
+	urls, total, err := h.svc.List(ctx, page, limit)
+	if err != nil {
+		h.log.Error("Failed to list URLs", slog.String("error", err.Error()))
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to get URLs",
+		})
+	}
+
+	response := URLListResponse{
+		URLs:  urls,
+		Total: total,
+		Page:  page,
+		Limit: limit,
+	}
+
+	return c.JSON(http.StatusOK, response)
 }

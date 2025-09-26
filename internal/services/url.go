@@ -51,11 +51,19 @@ func (s Url) Delete(ctx context.Context, params domain.URLFilter) error {
 	return nil
 }
 
-
 func (s Url) GetByID(ctx context.Context, params domain.URLFilter) (*domain.Url, error) {
 	url, err := s.repo.URLFind(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("error finding url in database: %w", err)
 	}
 	return url, nil
+}
+
+func (s Url) List(ctx context.Context, page, limit int) ([]*domain.Url, int, error) {
+	urls, total, err := s.repo.List(ctx, page, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get URLs list: %w", err)
+	}
+
+	return urls, total, nil
 }

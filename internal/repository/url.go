@@ -32,11 +32,11 @@ func (r Url) URLFind(ctx context.Context, params domain.URLFilter) (*domain.Url,
 
 func (r Url) buildFilterByParams(q *gorm.DB, params domain.URLFilter) *gorm.DB {
 	if params.Alias != "" {
-		q = q.Where(&domain.Url{Alias: params.Alias})
+		q.Where(&domain.Url{Alias: params.Alias})
 	}
 
-	if params.ID != "" {
-		q = q.Where(&domain.Url{ID: params.ID})
+	if params.ID != 0 {
+		q.Where(&domain.Url{ID: params.ID})
 	}
 	return q
 }
@@ -55,4 +55,25 @@ func (r Url) Delete(ctx context.Context, params domain.URLFilter) error {
 		return fmt.Errorf("failed deleting url in database: %w", result.Error)
 	}
 	return nil
+}
+
+func (r Url) List(ctx context.Context, page, limit int) ([]*domain.Url, int, error) {
+	var urls []*domain.Url
+	var total int64
+
+	r.DB.WithContext(ctx).Model(&domain.Url{}).Count(&total)
+
+	offset := (page - 1) * limit
+
+	result := r.DB.WithContext(ctx).
+		Order("id ASC").
+		Offset(offset).
+		Limit(limit).
+		Find(&urls)
+
+	if result.Error != nil {
+		return nil, 0, result.Error
+	}
+
+	return urls, int(total), nil
 }
