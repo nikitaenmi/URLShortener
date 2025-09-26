@@ -13,9 +13,10 @@ type URLFilter struct {
 	ID    int
 }
 
-type UrlRepo interface {
+type URLRepo interface {
 	Create(ctx context.Context, url Url) error
-	URLFind(ctx context.Context, params URLFilter) (*Url, error)
+	Find(ctx context.Context, params URLFilter) (*Url, error)
 	Delete(ctx context.Context, params URLFilter) error
 	List(ctx context.Context, page, limit int) ([]*Url, int, error)
+	Update(ctx context.Context, url *Url) error
 }

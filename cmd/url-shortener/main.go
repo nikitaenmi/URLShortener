@@ -52,7 +52,7 @@ func main() {
 	e.GET("/api/urls/:id", handler.Get)
 	e.GET("/api/urls", handler.List)
 	e.DELETE("/api/urls/:id", handler.Delete)
-	// e.PUT("/api/urls/:id", handler.PutURL) - изменение параметров ссылки по ID (в работе)
+	e.PUT("/api/urls/:id", handler.PutURL)
 
 	// Отдельный endpoint для редиректа
 	e.GET("/r/:alias", handler.Redirect)

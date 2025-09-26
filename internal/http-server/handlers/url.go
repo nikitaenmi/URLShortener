@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/nikitaenmi/URLShortener/internal/config"
@@ -170,4 +171,41 @@ func (h *Url) List(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+func (h *Url) PutURL(c echo.Context) error {
+	ctx := c.Request().Context()
+	idString := c.Param("id")
+
+	id, err := strconv.Atoi(idString)
+	if err != nil {
+		h.log.Error("Invalid ID format", slog.String("id", idString), slog.String("error", err.Error()))
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid ID format"})
+	}
+
+	var request struct {
+		OriginalURL string `json:"url"`
+	}
+
+	if err := c.Bind(&request); err != nil {
+		h.log.Error("Invalid request", slog.String("error", err.Error()))
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+	}
+
+	params := domain.URLFilter{
+		ID: id,
+	}
+	
+	updatedURL, err := h.svc.Update(ctx, params, request.OriginalURL)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			h.log.Error("URL not found", slog.String("id", idString), slog.String("error", err.Error()))
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "URL not found"})
+		}
+		h.log.Error("Failed to update URL", slog.String("id", idString), slog.String("error", err.Error()))
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update URL"})
+	}
+
+	h.log.Info("URL updated successfully", slog.String("id", idString))
+	return c.JSON(http.StatusOK, updatedURL)
 }
