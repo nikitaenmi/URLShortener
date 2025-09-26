@@ -50,9 +50,9 @@ func main() {
 	// CRUD - операции
 	e.POST("/api/urls", handler.Create)
 	e.GET("/api/urls/:id", handler.Get)
-	e.GET("/api/urls", handler.List)
+	e.PUT("/api/urls/:id", handler.Put)
 	e.DELETE("/api/urls/:id", handler.Delete)
-	e.PUT("/api/urls/:id", handler.PutURL)
+	e.GET("/api/urls", handler.List)
 
 	// Отдельный endpoint для редиректа
 	e.GET("/r/:alias", handler.Redirect)

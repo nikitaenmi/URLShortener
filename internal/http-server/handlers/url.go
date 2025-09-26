@@ -173,7 +173,7 @@ func (h *Url) List(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func (h *Url) PutURL(c echo.Context) error {
+func (h *Url) Put(c echo.Context) error {
 	ctx := c.Request().Context()
 	idString := c.Param("id")
 
