@@ -9,11 +9,11 @@ import (
 )
 
 type Url struct {
-	repo      domain.UrlRepo
+	repo      domain.URLRepo
 	generator generator.Generator
 }
 
-func NewUrl(repo domain.UrlRepo, generator generator.Generator) Url {
+func NewUrl(repo domain.URLRepo, generator generator.Generator) Url {
 	return Url{
 		repo:      repo,
 		generator: generator,
@@ -27,7 +27,6 @@ func (s Url) Shortener(ctx context.Context, url domain.Url) (string, error) {
 	}
 
 	url.Alias = alias
-	fmt.Println(url)
 	err = s.repo.Create(ctx, url)
 	if err != nil {
 		return "", fmt.Errorf("failed writing url and aliase in database: %w", err)
@@ -35,12 +34,28 @@ func (s Url) Shortener(ctx context.Context, url domain.Url) (string, error) {
 	return alias, nil
 }
 
-func (s Url) Redirect(ctx context.Context, params domain.URLFilter) (*domain.Url, error) {
-	url, err := s.repo.URLFind(ctx, params)
+func (s Url) Get(ctx context.Context, params domain.URLFilter) (*domain.Url, error) {
+	url, err := s.repo.Find(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("error finding url in database: %w", err)
 	}
 	return url, nil
+}
+
+func (s Url) Update(ctx context.Context, params domain.URLFilter, newURL string) (*domain.Url, error) {
+	existingURL, err := s.repo.Find(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("URL not found: %w", err)
+	}
+
+	existingURL.OriginalURL = newURL
+
+	err = s.repo.Update(ctx, existingURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update URL: %w", err)
+	}
+
+	return existingURL, nil
 }
 
 func (s Url) Delete(ctx context.Context, params domain.URLFilter) error {
@@ -49,4 +64,13 @@ func (s Url) Delete(ctx context.Context, params domain.URLFilter) error {
 		return fmt.Errorf("failed deleting url in database: %w", err)
 	}
 	return nil
+}
+
+func (s Url) List(ctx context.Context, page, limit int) ([]*domain.Url, int, error) {
+	urls, total, err := s.repo.List(ctx, page, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get URLs list: %w", err)
+	}
+
+	return urls, total, nil
 }
