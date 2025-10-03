@@ -47,9 +47,16 @@ func main() {
 
 	e.Use(middleware.RequestIDMiddleware())
 
-	e.POST("/shortener", handler.ShortenerURL)
-	e.GET("/:alias", handler.RedirectURL)
-	e.DELETE("/:alias", handler.DeleteURL)
+	// CRUDL - OPERATIONS
+
+	e.POST("/urls", handler.Create)
+	e.GET("/urls/:id", handler.Get)
+	e.PUT("/urls/:id", handler.Put)
+	e.DELETE("/urls/:id", handler.Delete)
+	e.GET("/urls", handler.List)
+
+	// REDIRECT - OPERATION
+	e.GET("/r/:alias", handler.Redirect)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
