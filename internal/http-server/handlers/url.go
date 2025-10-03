@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/domain"
+	httpserver "github.com/nikitaenmi/URLShortener/internal/http-server"
 	"github.com/nikitaenmi/URLShortener/internal/lib/logger"
 	"github.com/nikitaenmi/URLShortener/internal/services"
 )
@@ -83,13 +84,6 @@ func (h *Url) Get(c echo.Context) error {
 	return c.JSON(http.StatusOK, url)
 }
 
-type URLListResponse struct {
-	URLs  []*domain.Url `json:"urls"`
-	Total int           `json:"total"`
-	Page  int           `json:"page"`
-	Limit int           `json:"limit"`
-}
-
 func (h *Url) Put(c echo.Context) error {
 	ctx := c.Request().Context()
 	idString := c.Param("id")
@@ -151,17 +145,27 @@ func (h *Url) Delete(c echo.Context) error {
 func (h *Url) List(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	page, _ := strconv.Atoi(c.QueryParam("page"))
-	if page < 1 {
-		page = 1
+	var req httpserver.Request
+	if err := c.Bind(&req); err != nil {
+		h.log.Error("Failed to bind query parameters", slog.String("error", err.Error()))
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid query parameters",
+		})
 	}
 
-	limit, _ := strconv.Atoi(c.QueryParam("limit"))
-	if limit < 1 || limit > 50 {
-		limit = 10
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.Limit < 1 || req.Limit > 50 {
+		req.Limit = 10
 	}
 
-	urls, total, err := h.svc.List(ctx, page, limit)
+	params := domain.Paginator{
+		Page:  req.Page,
+		Limit: req.Limit,
+	}
+
+	urls, paginationData, err := h.svc.List(ctx, params)
 	if err != nil {
 		h.log.Error("Failed to list URLs", slog.String("error", err.Error()))
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -169,11 +173,11 @@ func (h *Url) List(c echo.Context) error {
 		})
 	}
 
-	response := URLListResponse{
+	response := httpserver.Response{
 		URLs:  urls,
-		Total: total,
-		Page:  page,
-		Limit: limit,
+		Total: int(paginationData.Total),
+		Page:  paginationData.Page,
+		Limit: paginationData.Limit,
 	}
 
 	return c.JSON(http.StatusOK, response)

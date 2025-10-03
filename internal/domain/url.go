@@ -13,10 +13,16 @@ type URLFilter struct {
 	ID    int
 }
 
+type Paginator struct {
+	Limit int
+	Page  int
+	Total int64
+}
+
 type URLRepo interface {
 	Create(ctx context.Context, url Url) error
 	Find(ctx context.Context, params URLFilter) (*Url, error)
 	Delete(ctx context.Context, params URLFilter) error
-	List(ctx context.Context, page, limit int) ([]*Url, int, error)
+	List(ctx context.Context, params Paginator) ([]*Url, Paginator, error)
 	Update(ctx context.Context, url *Url) error
 }

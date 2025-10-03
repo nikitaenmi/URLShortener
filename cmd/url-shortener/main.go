@@ -49,11 +49,11 @@ func main() {
 
 	// CRUDL - OPERATIONS
 
-	e.POST("/api/urls", handler.Create)
-	e.GET("/api/urls/:id", handler.Get)
-	e.PUT("/api/urls/:id", handler.Put)
-	e.DELETE("/api/urls/:id", handler.Delete)
-	e.GET("/api/urls", handler.List)
+	e.POST("/urls", handler.Create)
+	e.GET("/urls/:id", handler.Get)
+	e.PUT("/urls/:id", handler.Put)
+	e.DELETE("/urls/:id", handler.Delete)
+	e.GET("/urls", handler.List)
 
 	// REDIRECT - OPERATION
 	e.GET("/r/:alias", handler.Redirect)

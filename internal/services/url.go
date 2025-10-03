@@ -66,10 +66,10 @@ func (s Url) Delete(ctx context.Context, params domain.URLFilter) error {
 	return nil
 }
 
-func (s Url) List(ctx context.Context, page, limit int) ([]*domain.Url, int, error) {
-	urls, total, err := s.repo.List(ctx, page, limit)
+func (s Url) List(ctx context.Context, params domain.Paginator) ([]*domain.Url, domain.Paginator, error) {
+	urls, total, err := s.repo.List(ctx, params)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get URLs list: %w", err)
+		return nil, params, fmt.Errorf("failed to get URLs list: %w", err)
 	}
 
 	return urls, total, nil

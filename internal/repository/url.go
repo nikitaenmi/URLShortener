@@ -77,23 +77,22 @@ func (r Url) Delete(ctx context.Context, params domain.URLFilter) error {
 	return nil
 }
 
-func (r Url) List(ctx context.Context, page, limit int) ([]*domain.Url, int, error) {
+func (r Url) List(ctx context.Context, params domain.Paginator) ([]*domain.Url, domain.Paginator, error) {
 	var urls []*domain.Url
-	var total int64
 
-	r.DB.WithContext(ctx).Model(&domain.Url{}).Count(&total)
+	r.DB.WithContext(ctx).Model(&domain.Url{}).Count(&params.Total)
 
-	offset := (page - 1) * limit
+	offset := (params.Page - 1) * params.Limit
 
 	result := r.DB.WithContext(ctx).
 		Order("id ASC").
 		Offset(offset).
-		Limit(limit).
+		Limit(params.Limit).
 		Find(&urls)
 
 	if result.Error != nil {
-		return nil, 0, result.Error
+		return nil, params, result.Error
 	}
 
-	return urls, int(total), nil
+	return urls, params, nil
 }
