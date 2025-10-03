@@ -35,7 +35,7 @@ func (s Url) Shortener(ctx context.Context, url domain.Url) (string, error) {
 }
 
 func (s Url) Get(ctx context.Context, params domain.URLFilter) (*domain.Url, error) {
-	url, err := s.repo.Find(ctx, params)
+	url, err := s.repo.FindById(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("error finding url in database: %w", err)
 	}
@@ -43,7 +43,7 @@ func (s Url) Get(ctx context.Context, params domain.URLFilter) (*domain.Url, err
 }
 
 func (s Url) Update(ctx context.Context, params domain.URLFilter, newURL string) (*domain.Url, error) {
-	existingURL, err := s.repo.Find(ctx, params)
+	existingURL, err := s.repo.FindById(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("URL not found: %w", err)
 	}

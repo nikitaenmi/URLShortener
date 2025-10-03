@@ -28,19 +28,18 @@ func (r Url) Create(ctx context.Context, url domain.Url) error {
 
 func (r Url) buildFilterByParams(q *gorm.DB, params domain.URLFilter) *gorm.DB {
 	if params.Alias != "" {
-		q.Where(&domain.Url{Alias: params.Alias})
+		q = q.Where(&domain.Url{Alias: params.Alias})
 	}
 
 	if params.ID != 0 {
-		q.Where(&domain.Url{ID: params.ID})
+		q = q.Where(&domain.Url{ID: params.ID})
 	}
 	return q
 }
 
-func (r Url) Find(ctx context.Context, params domain.URLFilter) (*domain.Url, error) {
+func (r Url) FindById(ctx context.Context, params domain.URLFilter) (*domain.Url, error) {
 	url := domain.Url{}
-
-	q := r.DB.WithContext(ctx).Select("*")
+	q := r.DB.WithContext(ctx)
 	q = r.buildFilterByParams(q, params)
 
 	if err := q.First(&url).Error; err != nil {
@@ -77,21 +76,45 @@ func (r Url) Delete(ctx context.Context, params domain.URLFilter) error {
 	return nil
 }
 
-func (r Url) List(ctx context.Context, params domain.Paginator) ([]*domain.Url, domain.Paginator, error) {
+func (r Url) Count(ctx context.Context, params domain.URLFilter) (int64, error) {
+	var count int64
+
+	q := r.DB.WithContext(ctx).Model(&domain.Url{})
+	q = r.buildFilterByParams(q, params)
+
+	if err := q.Count(&count).Error; err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func (r Url) FindAll(ctx context.Context, params domain.URLFilter, paginator *domain.Paginator) ([]*domain.Url, error) {
 	var urls []*domain.Url
+	q := r.DB.WithContext(ctx)
+	q = r.buildFilterByParams(q, params)
 
-	r.DB.WithContext(ctx).Model(&domain.Url{}).Count(&params.Total)
+	if paginator != nil {
+		offset := (paginator.Page - 1) * paginator.Limit
+		q = q.Offset(offset).Limit(paginator.Limit)
+	}
 
-	offset := (params.Page - 1) * params.Limit
+	result := q.Order("id ASC").Find(&urls)
+	return urls, result.Error
+}
 
-	result := r.DB.WithContext(ctx).
-		Order("id ASC").
-		Offset(offset).
-		Limit(params.Limit).
-		Find(&urls)
+func (r Url) List(ctx context.Context, params domain.Paginator) ([]*domain.Url, domain.Paginator, error) {
+	filter := domain.URLFilter{}
 
-	if result.Error != nil {
-		return nil, params, result.Error
+	total, err := r.Count(ctx, filter)
+	if err != nil {
+		return nil, params, err
+	}
+	params.Total = total
+
+	urls, err := r.FindAll(ctx, filter, &params)
+	if err != nil {
+		return nil, params, err
 	}
 
 	return urls, params, nil

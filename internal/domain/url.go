@@ -21,8 +21,10 @@ type Paginator struct {
 
 type URLRepo interface {
 	Create(ctx context.Context, url Url) error
-	Find(ctx context.Context, params URLFilter) (*Url, error)
+	FindById(ctx context.Context, params URLFilter) (*Url, error)
 	Delete(ctx context.Context, params URLFilter) error
 	List(ctx context.Context, params Paginator) ([]*Url, Paginator, error)
 	Update(ctx context.Context, url *Url) error
+	Count(ctx context.Context, filter URLFilter) (int64, error)
+	FindAll(ctx context.Context, filter URLFilter, paginator *Paginator) ([]*Url, error)
 }

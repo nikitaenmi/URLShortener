@@ -33,9 +33,7 @@ func NewUrl(svc services.Url, log logger.Logger, cfg config.Server) Url {
 
 func (h *Url) Create(c echo.Context) error {
 	ctx := c.Request().Context()
-	var request struct {
-		OriginalURL string `json:"url"`
-	}
+	var request httpserver.CreateRequest
 
 	if err := c.Bind(&request); err != nil {
 		h.log.Error("Invalid request", slog.String("error", err.Error()))
@@ -54,8 +52,8 @@ func (h *Url) Create(c echo.Context) error {
 
 	h.log.Info("Link created successfully!", slog.String("alias", alias))
 
-	response := map[string]string{
-		"short_url": fmt.Sprintf("http://%s:%s/%s", h.cfg.Host, h.cfg.Port, alias),
+	response := httpserver.CreateResponse{
+		ShortURL: fmt.Sprintf("http://%s:%s/%s", h.cfg.Host, h.cfg.Port, alias),
 	}
 
 	return c.JSON(http.StatusOK, response)
@@ -94,9 +92,7 @@ func (h *Url) Put(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid ID format"})
 	}
 
-	var request struct {
-		OriginalURL string `json:"url"`
-	}
+	var request httpserver.PutRequest
 
 	if err := c.Bind(&request); err != nil {
 		h.log.Error("Invalid request", slog.String("error", err.Error()))
@@ -145,24 +141,24 @@ func (h *Url) Delete(c echo.Context) error {
 func (h *Url) List(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	var req httpserver.Request
-	if err := c.Bind(&req); err != nil {
+	var request httpserver.ListRequest
+	if err := c.Bind(&request); err != nil {
 		h.log.Error("Failed to bind query parameters", slog.String("error", err.Error()))
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid query parameters",
 		})
 	}
 
-	if req.Page < 1 {
-		req.Page = 1
+	if request.Page < 1 {
+		request.Page = 1
 	}
-	if req.Limit < 1 || req.Limit > 50 {
-		req.Limit = 10
+	if request.Limit < 1 || request.Limit > 50 {
+		request.Limit = 10
 	}
 
 	params := domain.Paginator{
-		Page:  req.Page,
-		Limit: req.Limit,
+		Page:  request.Page,
+		Limit: request.Limit,
 	}
 
 	urls, paginationData, err := h.svc.List(ctx, params)
@@ -173,7 +169,7 @@ func (h *Url) List(c echo.Context) error {
 		})
 	}
 
-	response := httpserver.Response{
+	response := httpserver.ListResponse{
 		URLs:  urls,
 		Total: int(paginationData.Total),
 		Page:  paginationData.Page,
