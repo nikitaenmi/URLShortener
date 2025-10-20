@@ -38,13 +38,13 @@ func (h *Url) Create(c echo.Context) error {
 
 	url := req.ToDomain()
 
-	alias, err := h.svc.Shortener(ctx, url)
+	shortURL, err := h.svc.CreateShortURL(ctx, url)
 	if err != nil {
 		return err
 	}
 
-	h.log.Info("link created", slog.String("alias", alias), slog.String("original_url", req.OriginalURL))
-	res := dto.ToUrlItemResponse(alias, h.cfg.Host, h.cfg.Port)
+	h.log.Info("link created", slog.String("alias", shortURL.Alias), slog.String("original_url", url.OriginalURL))
+	res := dto.ToUrlItemResponse(shortURL.Alias, h.cfg.Host, h.cfg.Port)
 	return c.JSON(http.StatusCreated, res)
 }
 

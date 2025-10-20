@@ -20,18 +20,18 @@ func NewUrl(repo domain.URLRepo, generator generator.Generator) Url {
 	}
 }
 
-func (s Url) Shortener(ctx context.Context, url domain.Url) (string, error) {
+func (s Url) CreateShortURL(ctx context.Context, url domain.Url) (*domain.Url, error) {
 	alias, err := s.generator.Generate()
 	if err != nil {
-		return "", fmt.Errorf("error generating alias: %w", err)
+		return nil, fmt.Errorf("error generating alias: %w", err)
 	}
 
 	url.Alias = alias
 	err = s.repo.Create(ctx, url)
 	if err != nil {
-		return "", fmt.Errorf("failed writing url and aliase in database: %w", err)
+		return nil, fmt.Errorf("failed writing url and aliase in database: %w", err)
 	}
-	return alias, nil
+	return &url, nil
 }
 
 func (s Url) Get(ctx context.Context, params domain.URLFilter) (*domain.Url, error) {
