@@ -44,12 +44,17 @@ func main() {
 	handler := handlers.NewUrl(svc, logger, cfg.Server)
 
 	e := echo.New()
-
 	e.Use(middleware.RequestIDMiddleware())
+	e.Use(middleware.ErrorHandler(logger))
 
-	e.POST("/shortener", handler.ShortenerURL)
-	e.GET("/:alias", handler.RedirectURL)
-	e.DELETE("/:alias", handler.DeleteURL)
+	// CRUDL - OPERATIONS
+	e.POST("/urls", handler.Create)
+	e.GET("/urls/:id", handler.Read)
+	e.PUT("/urls/:id", handler.Update)
+	e.DELETE("/urls/:id", handler.Delete)
+	e.GET("/urls", handler.List)
+
+	e.GET("/r/:alias", handler.Redirect)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
