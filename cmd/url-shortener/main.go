@@ -44,18 +44,16 @@ func main() {
 	handler := handlers.NewUrl(svc, logger, cfg.Server)
 
 	e := echo.New()
-
 	e.Use(middleware.RequestIDMiddleware())
+	e.Use(middleware.ErrorHandler(logger))
 
 	// CRUDL - OPERATIONS
-
 	e.POST("/urls", handler.Create)
-	e.GET("/urls/:id", handler.Get)
-	e.PUT("/urls/:id", handler.Put)
+	e.GET("/urls/:id", handler.Read)
+	e.PUT("/urls/:id", handler.Update)
 	e.DELETE("/urls/:id", handler.Delete)
 	e.GET("/urls", handler.List)
 
-	// REDIRECT - OPERATION
 	e.GET("/r/:alias", handler.Redirect)
 
 	srv := &http.Server{

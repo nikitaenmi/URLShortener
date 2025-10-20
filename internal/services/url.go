@@ -43,19 +43,19 @@ func (s Url) Get(ctx context.Context, params domain.URLFilter) (*domain.Url, err
 }
 
 func (s Url) Update(ctx context.Context, params domain.URLFilter, newURL string) (*domain.Url, error) {
-	existingURL, err := s.repo.FindById(ctx, params)
+	oldURL, err := s.repo.FindById(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("URL not found: %w", err)
+		return nil, err
 	}
 
-	existingURL.OriginalURL = newURL
+	oldURL.OriginalURL = newURL
 
-	err = s.repo.Update(ctx, existingURL)
+	err = s.repo.Update(ctx, oldURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update URL: %w", err)
 	}
 
-	return existingURL, nil
+	return oldURL, nil
 }
 
 func (s Url) Delete(ctx context.Context, params domain.URLFilter) error {
@@ -66,11 +66,23 @@ func (s Url) Delete(ctx context.Context, params domain.URLFilter) error {
 	return nil
 }
 
-func (s Url) List(ctx context.Context, params domain.Paginator) ([]*domain.Url, domain.Paginator, error) {
-	urls, total, err := s.repo.List(ctx, params)
+func (s Url) List(ctx context.Context, params domain.Paginator) (*domain.UrlList, error) {
+	filter := domain.URLFilter{}
+
+	total, err := s.repo.Count(ctx, filter)
 	if err != nil {
-		return nil, params, fmt.Errorf("failed to get URLs list: %w", err)
+		return nil, err
 	}
 
-	return urls, total, nil
+	urls, err := s.repo.FindAll(ctx, filter, &params)
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.UrlList{
+		Items: urls,
+		Page:  params.Page,
+		Limit: params.Limit,
+		Total: total,
+	}, nil
 }

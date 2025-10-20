@@ -1,6 +1,9 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 type Url struct {
 	ID          int
@@ -13,6 +16,14 @@ type URLFilter struct {
 	ID    int
 }
 
+func ByID(id int) URLFilter {
+	return URLFilter{ID: id}
+}
+
+func ByAlias(alias string) URLFilter {
+	return URLFilter{Alias: alias}
+}
+
 type Paginator struct {
 	Limit int
 	Page  int
@@ -21,10 +32,20 @@ type Paginator struct {
 
 type URLRepo interface {
 	Create(ctx context.Context, url Url) error
-	FindById(ctx context.Context, params URLFilter) (*Url, error)
-	Delete(ctx context.Context, params URLFilter) error
-	List(ctx context.Context, params Paginator) ([]*Url, Paginator, error)
 	Update(ctx context.Context, url *Url) error
+	Delete(ctx context.Context, params URLFilter) error
 	Count(ctx context.Context, filter URLFilter) (int64, error)
+	FindById(ctx context.Context, params URLFilter) (*Url, error)
 	FindAll(ctx context.Context, filter URLFilter, paginator *Paginator) ([]*Url, error)
+}
+
+var (
+	ErrURLNotFound = errors.New("url not found")
+)
+
+type UrlList struct {
+	Items []*Url
+	Page  int
+	Limit int
+	Total int64
 }

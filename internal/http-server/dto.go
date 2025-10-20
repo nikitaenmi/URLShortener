@@ -4,29 +4,22 @@ import (
 	"github.com/nikitaenmi/URLShortener/internal/domain"
 )
 
-type CreateRequest struct {
+// Единый request для создания и обновления URL
+type UrlRequest struct {
 	OriginalURL string `json:"original_url"`
+	Alias       string `json:"alias"`
 }
 
-type CreateResponse struct {
+type UrlItemResponse struct {
 	ShortURL string `json:"short_url"`
 }
 
-type PutRequest struct {
-	OriginalURL string `json:"url"`
-}
-type PutResponse struct {
-	ShortURL string `json:"short_url"`
+type UrlListRequest struct {
+	Page  int `query:"page"`
+	Limit int `query:"limit"`
 }
 
-type ListResponse struct {
+type UrlListResponse struct {
 	URLs  []*domain.Url `json:"urls"`
 	Total int           `json:"total"`
-	Page  int           `json:"page"`
-	Limit int           `json:"limit"`
-}
-
-type ListRequest struct {
-	Page  int `query:"page" validate:"min=1"`
-	Limit int `query:"limit" validate:"min=1,max=50"`
 }

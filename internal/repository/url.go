@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/nikitaenmi/URLShortener/internal/domain"
@@ -43,7 +44,10 @@ func (r Url) FindById(ctx context.Context, params domain.URLFilter) (*domain.Url
 	q = r.buildFilterByParams(q, params)
 
 	if err := q.First(&url).Error; err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrURLNotFound
+		}
+		return nil, fmt.Errorf("repo find error: %w", err)
 	}
 	return &url, nil
 }
@@ -55,23 +59,26 @@ func (r Url) Update(ctx context.Context, url *domain.Url) error {
 	q := r.DB.WithContext(ctx).Model(&domain.Url{})
 	q = r.buildFilterByParams(q, params)
 
-	result := q.Update("original_url", url.OriginalURL)
+	res := q.Update("original_url", url.OriginalURL)
 
-	if result.Error != nil {
-		return fmt.Errorf("failed to update URL in database: %w", result.Error)
+	if res.Error != nil {
+		return fmt.Errorf("failed to update URL in database: %w", res.Error)
 	}
 
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("URL with id %d not found", url.ID)
+	if res.RowsAffected == 0 {
+		return domain.ErrURLNotFound
 	}
 
 	return nil
 }
 
 func (r Url) Delete(ctx context.Context, params domain.URLFilter) error {
-	result := r.DB.WithContext(ctx).Where("ID = ?", params.ID).Delete(&domain.Url{})
-	if result.Error != nil {
-		return fmt.Errorf("failed deleting url in database: %w", result.Error)
+	res := r.DB.WithContext(ctx).Where("ID = ?", params.ID).Delete(&domain.Url{})
+	if res.Error != nil {
+		return fmt.Errorf("failed deleting url in database: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return domain.ErrURLNotFound
 	}
 	return nil
 }
@@ -83,7 +90,7 @@ func (r Url) Count(ctx context.Context, params domain.URLFilter) (int64, error) 
 	q = r.buildFilterByParams(q, params)
 
 	if err := q.Count(&count).Error; err != nil {
-		return 0, err
+		return 0, fmt.Errorf("repo count error: %w", err)
 	}
 
 	return count, nil
@@ -99,23 +106,9 @@ func (r Url) FindAll(ctx context.Context, params domain.URLFilter, paginator *do
 		q = q.Offset(offset).Limit(paginator.Limit)
 	}
 
-	result := q.Order("id ASC").Find(&urls)
-	return urls, result.Error
-}
-
-func (r Url) List(ctx context.Context, params domain.Paginator) ([]*domain.Url, domain.Paginator, error) {
-	filter := domain.URLFilter{}
-
-	total, err := r.Count(ctx, filter)
-	if err != nil {
-		return nil, params, err
+	res := q.Order("id ASC").Find(&urls)
+	if res.Error != nil {
+		return nil, fmt.Errorf("repo find all error: %w", res.Error)
 	}
-	params.Total = total
-
-	urls, err := r.FindAll(ctx, filter, &params)
-	if err != nil {
-		return nil, params, err
-	}
-
-	return urls, params, nil
+	return urls, nil
 }
