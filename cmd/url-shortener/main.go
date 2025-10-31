@@ -33,21 +33,19 @@ func main() {
 		log.Fatal("Database init", err.Error())
 	}
 
-	repo := repository.NewUrl(db)
+	repo := repository.NewURL(db)
 
 	aliasGenerator, err := generator.New(cfg.Generator)
 	if err != nil {
 		log.Fatal("Generatocr init", err.Error())
 	}
-
-	svc := services.NewUrl(repo, aliasGenerator)
-	handler := handlers.NewUrl(svc, logger, cfg.Server)
+	svc := services.NewURL(repo, aliasGenerator)
+	handler := handlers.NewURL(svc, logger, cfg.Server)
 
 	e := echo.New()
 	e.Use(middleware.RequestIDMiddleware())
 	e.Use(middleware.ErrorHandler(logger))
 
-	// CRUDL - OPERATIONS
 	e.POST("/urls", handler.Create)
 	e.GET("/urls/:id", handler.Read)
 	e.PUT("/urls/:id", handler.Update)

@@ -1,6 +1,6 @@
 package database
 
-type Url struct {
+type URL struct {
 	ID          int `gorm:"primaryKey"`
 	OriginalURL string
 	Alias       string `gorm:"uniqueIndex"`

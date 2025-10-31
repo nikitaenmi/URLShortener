@@ -19,24 +19,29 @@ func ErrorHandler(log logger.Logger) echo.MiddlewareFunc {
 
 			requestID := GetRequestIDFromContext(c.Request().Context())
 
+			// 404
 			if errors.Is(err, domain.ErrURLNotFound) {
-				return c.JSON(http.StatusNotFound, map[string]string{
-					"error": "URL not found",
-				})
+				log.Info("URL not found" /* ... */)
+				return c.JSON(http.StatusNotFound, map[string]string{"error": "URL not found"})
 			}
 
-			log.Error(
-				"Internal server error",
-				"error", err,
-				"method", c.Request().Method,
-				"path", c.Request().URL.Path,
-				"remote_ip", c.Request().RemoteAddr,
-				"request_id", requestID,
-			)
+			// 400 — клиентские ошибки
+			if errors.Is(err, domain.ErrInvalidRequest) ||
+				errors.Is(err, domain.ErrInvalidID) ||
+				errors.Is(err, domain.ErrInvalidQueryParams) {
+				log.Warn("Client error",
+					"error", err.Error(),
+					"method", c.Request().Method,
+					"path", c.Request().URL.Path,
+					"request_id", requestID,
+				)
+				// Возвращаем сообщение из самой ошибки
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+			}
 
-			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "Internal server error",
-			})
+			// 500 — всё остальное
+			log.Error("Internal server error" /* ... */)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		}
 	}
 }

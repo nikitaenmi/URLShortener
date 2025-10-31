@@ -3,14 +3,13 @@ package handlers
 import (
 	"strconv"
 
-	"github.com/nikitaenmi/URLShortener/internal/lib/logger"
+	"github.com/nikitaenmi/URLShortener/internal/domain"
 )
 
-func ParseID(idStr string, log logger.Logger) (int, error) {
+func parseID(idStr string) (int, error) {
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		log.Warn("Invalid ID format", "id", idStr)
-		return 0, err
+		return 0, domain.ErrInvalidID
 	}
 	return id, nil
 }

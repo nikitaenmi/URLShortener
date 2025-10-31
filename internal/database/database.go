@@ -18,7 +18,7 @@ func Connect(cfg config.Database) (*gorm.DB, error) {
 		return nil, errors.New("Open connection error: " + err.Error())
 	}
 
-	err = db.AutoMigrate(&Url{})
+	err = db.AutoMigrate(&URL{})
 	if err != nil {
 		return nil, errors.New("Migrate error:" + err.Error())
 	}

@@ -8,19 +8,19 @@ import (
 	"github.com/nikitaenmi/URLShortener/internal/lib/generator"
 )
 
-type Url struct {
+type URL struct {
 	repo      domain.URLRepo
 	generator generator.Generator
 }
 
-func NewUrl(repo domain.URLRepo, generator generator.Generator) Url {
-	return Url{
+func NewURL(repo domain.URLRepo, generator generator.Generator) URL {
+	return URL{
 		repo:      repo,
 		generator: generator,
 	}
 }
 
-func (s Url) CreateShortURL(ctx context.Context, url domain.Url) (*domain.Url, error) {
+func (s URL) Create(ctx context.Context, url domain.URL) (*domain.URL, error) {
 	alias, err := s.generator.Generate()
 	if err != nil {
 		return nil, fmt.Errorf("error generating alias: %w", err)
@@ -34,20 +34,21 @@ func (s Url) CreateShortURL(ctx context.Context, url domain.Url) (*domain.Url, e
 	return &url, nil
 }
 
-func (s Url) Get(ctx context.Context, params domain.URLFilter) (*domain.Url, error) {
-	url, err := s.repo.FindById(ctx, params)
+func (s URL) Get(ctx context.Context, params domain.URLFilter) (*domain.URL, error) {
+	urls, err := s.repo.FindAll(ctx, params, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error finding url in database: %w", err)
 	}
-	return url, nil
+	return urls[0], nil
 }
 
-func (s Url) Update(ctx context.Context, params domain.URLFilter, newURL string) (*domain.Url, error) {
-	oldURL, err := s.repo.FindById(ctx, params)
+func (s URL) Update(ctx context.Context, params domain.URLFilter, newURL string) (*domain.URL, error) {
+	urls, err := s.repo.FindAll(ctx, params, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	oldURL := urls[0]
 	oldURL.OriginalURL = newURL
 
 	err = s.repo.Update(ctx, oldURL)
@@ -58,7 +59,7 @@ func (s Url) Update(ctx context.Context, params domain.URLFilter, newURL string)
 	return oldURL, nil
 }
 
-func (s Url) Delete(ctx context.Context, params domain.URLFilter) error {
+func (s URL) Delete(ctx context.Context, params domain.URLFilter) error {
 	err := s.repo.Delete(ctx, params)
 	if err != nil {
 		return fmt.Errorf("failed deleting url in database: %w", err)
@@ -66,7 +67,7 @@ func (s Url) Delete(ctx context.Context, params domain.URLFilter) error {
 	return nil
 }
 
-func (s Url) List(ctx context.Context, params domain.Paginator) (*domain.UrlList, error) {
+func (s URL) List(ctx context.Context, params domain.Paginator) (*domain.URLList, error) {
 	filter := domain.URLFilter{}
 
 	total, err := s.repo.Count(ctx, filter)
@@ -79,10 +80,8 @@ func (s Url) List(ctx context.Context, params domain.Paginator) (*domain.UrlList
 		return nil, err
 	}
 
-	return &domain.UrlList{
+	return &domain.URLList{
 		Items: urls,
-		Page:  params.Page,
-		Limit: params.Limit,
 		Total: total,
 	}, nil
 }

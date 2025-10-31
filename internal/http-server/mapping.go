@@ -1,39 +1,40 @@
 package httpserver
 
 import (
+	"github.com/nikitaenmi/URLShortener/internal/constants"
 	"github.com/nikitaenmi/URLShortener/internal/domain"
 )
 
-func (r *UrlRequest) ToDomain() domain.Url {
-	return domain.Url{
+func (r *URLRequest) ToDomain() domain.URL {
+	return domain.URL{
 		OriginalURL: r.OriginalURL,
 	}
 }
 
-func ToUrlItemResponse(alias string, host, port string) UrlItemResponse {
-	return UrlItemResponse{
-		ShortURL: "http://" + host + ":" + port + "/" + alias,
+func ToURLItemResponse(protocol, host, port, alias string) URLItemResponse {
+	return URLItemResponse{
+		ShortURL: protocol + "://" + host + ":" + port + "/" + alias,
 	}
 }
 
-func (r *UrlListRequest) ValidateAndSetDefaults() {
+func (r *Paginator) ValidateAndSetDefaults() {
 	if r.Page < 1 {
-		r.Page = 1
+		r.Page = constants.DefaultPage
 	}
-	if r.Limit < 1 || r.Limit > 50 {
-		r.Limit = 10
+	if r.Limit < 1 || r.Limit > constants.MaxLimit {
+		r.Limit = constants.DefaultLimit
 	}
 }
 
-func (r *UrlListRequest) ToDomain() domain.Paginator {
+func (r *Paginator) ToDomain() domain.Paginator {
 	return domain.Paginator{
 		Page:  r.Page,
 		Limit: r.Limit,
 	}
 }
 
-func ToUrlListResponse(urlList *domain.UrlList) UrlListResponse {
-	return UrlListResponse{
+func ToURLListResponse(urlList *domain.URLList) URLListResponse {
+	return URLListResponse{
 		URLs:  urlList.Items,
 		Total: int(urlList.Total),
 	}
