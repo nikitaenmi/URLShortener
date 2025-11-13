@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -12,8 +11,14 @@ import (
 	"github.com/nikitaenmi/URLShortener/internal/services"
 )
 
+const (
+	idColumn          = "id"
+	originalURLColumn = "original_url"
+	aliasColumn       = "alias"
+)
+
 type URL struct {
-	svc services.URL
+	svc domain.URLService
 	log logger.Logger
 	cfg config.Server
 }
@@ -28,6 +33,8 @@ func NewURL(svc services.URL, log logger.Logger, cfg config.Server) URL {
 
 func (h *URL) Create(c echo.Context) error {
 	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
+
 	var req DTO.URLRequest
 	if err := c.Bind(&req); err != nil {
 		return domain.ErrInvalidRequest
@@ -37,7 +44,10 @@ func (h *URL) Create(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	h.log.Info("link created", slog.String("alias", url.Alias), slog.String("original_url", url.OriginalURL))
+	logWithCtx.Info("link created",
+		aliasColumn, url.Alias,
+		originalURLColumn, url.OriginalURL,
+	)
 	protocol := h.cfg.GetProtocol()
 	res := DTO.ToURLItemResponse(protocol, h.cfg.Host, h.cfg.Port, url.Alias)
 	return c.JSON(http.StatusCreated, res)
@@ -45,6 +55,8 @@ func (h *URL) Create(c echo.Context) error {
 
 func (h *URL) Read(c echo.Context) error {
 	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
+
 	idStr := c.Param("id")
 	id, err := parseID(idStr)
 	if err != nil {
@@ -54,12 +66,14 @@ func (h *URL) Read(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	h.log.Info("URL retrieved", slog.String("id", idStr))
+	logWithCtx.Info("url retrieved", idColumn, idStr)
 	return c.JSON(http.StatusOK, url)
 }
 
 func (h *URL) Update(c echo.Context) error {
 	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
+
 	idStr := c.Param("id")
 	id, err := parseID(idStr)
 	if err != nil {
@@ -73,12 +87,17 @@ func (h *URL) Update(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	h.log.Info("url updated", slog.Int("id", id), slog.String("original_url", req.OriginalURL))
+	logWithCtx.Info("url updated",
+		idColumn, id,
+		originalURLColumn, req.OriginalURL,
+	)
 	return c.JSON(http.StatusOK, updatedURL)
 }
 
 func (h *URL) Delete(c echo.Context) error {
 	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
+
 	idStr := c.Param("id")
 	id, err := parseID(idStr)
 	if err != nil {
@@ -87,12 +106,14 @@ func (h *URL) Delete(c echo.Context) error {
 	if err := h.svc.Delete(ctx, domain.ByID(id)); err != nil {
 		return err
 	}
-	h.log.Info("url deleted", slog.Int("id", id))
+	logWithCtx.Info("url deleted", idColumn, id)
 	return c.NoContent(http.StatusNoContent)
 }
 
 func (h *URL) List(c echo.Context) error {
 	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
+
 	var req DTO.Paginator
 	if err := c.Bind(&req); err != nil {
 		return domain.ErrInvalidQueryParams
@@ -107,17 +128,23 @@ func (h *URL) List(c echo.Context) error {
 	}
 
 	res := DTO.ToURLListResponse(urlList)
-	h.log.Info("URLs retrieved")
+	logWithCtx.Info("urls retrieved")
 	return c.JSON(http.StatusOK, res)
 }
 
 func (h *URL) Redirect(c echo.Context) error {
 	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
+
 	alias := c.Param("alias")
 	url, err := h.svc.Get(ctx, domain.ByAlias(alias))
 	if err != nil {
 		return err
 	}
-	h.log.Info("Redirection", slog.String("alias", alias), slog.String("original_url", url.OriginalURL))
+
+	logWithCtx.Info("redirection",
+		aliasColumn, alias,
+		originalURLColumn, url.OriginalURL,
+	)
 	return c.Redirect(http.StatusMovedPermanently, url.OriginalURL)
 }

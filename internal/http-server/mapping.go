@@ -1,8 +1,13 @@
 package httpserver
 
 import (
-	"github.com/nikitaenmi/URLShortener/internal/constants"
 	"github.com/nikitaenmi/URLShortener/internal/domain"
+)
+
+const (
+	DefaultLimit = 10
+	MaxLimit     = 100
+	DefaultPage  = 1
 )
 
 func (r *URLRequest) ToDomain() domain.URL {
@@ -19,10 +24,10 @@ func ToURLItemResponse(protocol, host, port, alias string) URLItemResponse {
 
 func (r *Paginator) ValidateAndSetDefaults() {
 	if r.Page < 1 {
-		r.Page = constants.DefaultPage
+		r.Page = DefaultPage
 	}
-	if r.Limit < 1 || r.Limit > constants.MaxLimit {
-		r.Limit = constants.DefaultLimit
+	if r.Limit < 1 || r.Limit > MaxLimit {
+		r.Limit = DefaultLimit
 	}
 }
 

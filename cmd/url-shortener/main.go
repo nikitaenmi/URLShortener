@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -15,36 +14,41 @@ import (
 	"github.com/nikitaenmi/URLShortener/internal/http-server/handlers"
 	"github.com/nikitaenmi/URLShortener/internal/http-server/middleware"
 	"github.com/nikitaenmi/URLShortener/internal/lib/generator"
+	"github.com/nikitaenmi/URLShortener/internal/lib/logger"
 	"github.com/nikitaenmi/URLShortener/internal/repository"
 	"github.com/nikitaenmi/URLShortener/internal/services"
 )
 
 func main() {
+	var log logger.Logger
+	log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
 	var cfg config.App
 	err := env.Parse(&cfg)
 	if err != nil {
-		log.Fatal(".env not found")
+		log.Error(".env not found")
+		os.Exit(1)
 	}
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	db, err := database.Connect(cfg.Database)
 	if err != nil {
-		log.Fatal("Database init", err.Error())
+		log.Error("database init failed", "error", err.Error())
+		os.Exit(1)
 	}
 
 	repo := repository.NewURL(db)
-
 	aliasGenerator, err := generator.New(cfg.Generator)
 	if err != nil {
-		log.Fatal("Generatocr init", err.Error())
+		log.Error("generator init failed", "error", err.Error())
+		os.Exit(1)
 	}
 	svc := services.NewURL(repo, aliasGenerator)
-	handler := handlers.NewURL(svc, logger, cfg.Server)
+	handler := handlers.NewURL(svc, log, cfg.Server)
 
 	e := echo.New()
 	e.Use(middleware.RequestIDMiddleware())
-	e.Use(middleware.ErrorHandler(logger))
+	e.Use(logger.EchoRequestLogger(log))
+	e.HTTPErrorHandler = middleware.HTTPErrorHandler
 
 	e.POST("/urls", handler.Create)
 	e.GET("/urls/:id", handler.Read)
@@ -52,7 +56,7 @@ func main() {
 	e.DELETE("/urls/:id", handler.Delete)
 	e.GET("/urls", handler.List)
 
-	e.GET("/r/:alias", handler.Redirect)
+	e.GET("/:alias", handler.Redirect)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
@@ -61,10 +65,10 @@ func main() {
 		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
 
-	logger.Info("Server is running", slog.String("address", srv.Addr))
+	log.Info("server is running", "address:", srv.Addr)
 
 	if err := e.StartServer(srv); err != nil {
-		logger.Error("Server not running", slog.String("error", err.Error()))
+		log.Error("server not running", "error", err.Error())
 		os.Exit(1)
 	}
 }

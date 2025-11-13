@@ -2,8 +2,11 @@ package config
 
 import (
 	"time"
+)
 
-	"github.com/nikitaenmi/URLShortener/internal/constants"
+const (
+	HTTPProtocol  = "http"
+	HTTPSProtocol = "https"
 )
 
 type Server struct {
@@ -17,7 +20,7 @@ type Server struct {
 
 func (s *Server) GetProtocol() string {
 	if s.Secure {
-		return constants.HTTPSProtocol
+		return HTTPSProtocol
 	}
-	return constants.HTTPProtocol
+	return HTTPProtocol
 }

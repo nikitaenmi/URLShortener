@@ -9,19 +9,19 @@ import (
 )
 
 type URL struct {
-	repo      domain.URLRepo
-	generator generator.Generator
+	repo domain.URLRepository
+	gen  generator.Generator
 }
 
-func NewURL(repo domain.URLRepo, generator generator.Generator) URL {
+func NewURL(repo domain.URLRepository, generator generator.Generator) URL {
 	return URL{
-		repo:      repo,
-		generator: generator,
+		repo: repo,
+		gen:  generator,
 	}
 }
 
 func (s URL) Create(ctx context.Context, url domain.URL) (*domain.URL, error) {
-	alias, err := s.generator.Generate()
+	alias, err := s.gen.Generate()
 	if err != nil {
 		return nil, fmt.Errorf("error generating alias: %w", err)
 	}

@@ -8,18 +8,23 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	idColumn          = "id"
+	originalURLColumn = "original_url"
+)
+
 type URL struct {
-	DB *gorm.DB
+	db *gorm.DB
 }
 
 func NewURL(db *gorm.DB) URL {
 	return URL{
-		DB: db,
+		db: db,
 	}
 }
 
 func (r URL) Create(ctx context.Context, url domain.URL) error {
-	if err := r.DB.WithContext(ctx).Create(&url).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(&url).Error; err != nil {
 		return fmt.Errorf("repo create error: %w", err)
 	}
 
@@ -41,10 +46,10 @@ func (r URL) Update(ctx context.Context, url *domain.URL) error {
 	params := domain.URLFilter{
 		ID: url.ID,
 	}
-	q := r.DB.WithContext(ctx).Model(&domain.URL{})
+	q := r.db.WithContext(ctx).Model(&domain.URL{})
 	q = r.buildFilterByParams(q, params)
 
-	res := q.Update("original_url", url.OriginalURL)
+	res := q.Update(originalURLColumn, url.OriginalURL)
 
 	if res.Error != nil {
 		return fmt.Errorf("failed to update URL in database: %w", res.Error)
@@ -58,7 +63,7 @@ func (r URL) Update(ctx context.Context, url *domain.URL) error {
 }
 
 func (r URL) Delete(ctx context.Context, params domain.URLFilter) error {
-	q := r.DB.WithContext(ctx)
+	q := r.db.WithContext(ctx)
 	q = r.buildFilterByParams(q, params)
 
 	res := q.Delete(&domain.URL{})
@@ -74,7 +79,7 @@ func (r URL) Delete(ctx context.Context, params domain.URLFilter) error {
 func (r URL) Count(ctx context.Context, params domain.URLFilter) (int64, error) {
 	var count int64
 
-	q := r.DB.WithContext(ctx).Model(&domain.URL{})
+	q := r.db.WithContext(ctx).Model(&domain.URL{})
 	q = r.buildFilterByParams(q, params)
 
 	if err := q.Count(&count).Error; err != nil {
@@ -86,16 +91,19 @@ func (r URL) Count(ctx context.Context, params domain.URLFilter) (int64, error) 
 
 func (r URL) FindAll(ctx context.Context, params domain.URLFilter, paginator *domain.Paginator) ([]*domain.URL, error) {
 	var urls []*domain.URL
-	q := r.DB.WithContext(ctx)
+	q := r.db.WithContext(ctx)
 	q = r.buildFilterByParams(q, params)
 
-	if params.ID != 0 {
+	if paginator == nil {
 		q = q.Limit(1)
 	} else {
-		q = q.Offset(paginator.GetOffset()).Limit(paginator.GetLimit())
+		offset := paginator.GetOffset()
+		q = q.Offset(offset)
+		limit := paginator.GetLimit()
+		q = q.Limit(limit)
 	}
 
-	res := q.Order("id ASC").Find(&urls)
+	res := q.Order(idColumn + " " + "ASC").Find(&urls)
 	if res.Error != nil {
 		return nil, fmt.Errorf("repo find all error: %w", res.Error)
 	}

@@ -6,42 +6,41 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/nikitaenmi/URLShortener/internal/domain"
-	"github.com/nikitaenmi/URLShortener/internal/lib/logger"
 )
 
-func ErrorHandler(log logger.Logger) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			err := next(c)
-			if err == nil {
-				return nil
+func HTTPErrorHandler(err error, c echo.Context) {
+	if c.Response().Committed {
+		return
+	}
+
+	code := http.StatusInternalServerError
+	message := "Internal Server Error"
+
+	switch {
+	case errors.Is(err, domain.ErrURLNotFound):
+		code = http.StatusNotFound
+		message = "url not found"
+
+	case errors.Is(err, domain.ErrInvalidID):
+		code = http.StatusBadRequest
+		message = "invalid ID format"
+
+	case errors.Is(err, domain.ErrInvalidRequest):
+		code = http.StatusBadRequest
+		message = "invalid request"
+
+	case errors.Is(err, domain.ErrInvalidQueryParams):
+		code = http.StatusBadRequest
+		message = "invalid query parameters"
+
+	default:
+		if he, ok := err.(*echo.HTTPError); ok {
+			code = he.Code
+			if msg, ok := he.Message.(string); ok {
+				message = msg
 			}
-
-			requestID := GetRequestIDFromContext(c.Request().Context())
-
-			// 404
-			if errors.Is(err, domain.ErrURLNotFound) {
-				log.Info("URL not found" /* ... */)
-				return c.JSON(http.StatusNotFound, map[string]string{"error": "URL not found"})
-			}
-
-			// 400 — клиентские ошибки
-			if errors.Is(err, domain.ErrInvalidRequest) ||
-				errors.Is(err, domain.ErrInvalidID) ||
-				errors.Is(err, domain.ErrInvalidQueryParams) {
-				log.Warn("Client error",
-					"error", err.Error(),
-					"method", c.Request().Method,
-					"path", c.Request().URL.Path,
-					"request_id", requestID,
-				)
-				// Возвращаем сообщение из самой ошибки
-				return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-			}
-
-			// 500 — всё остальное
-			log.Error("Internal server error" /* ... */)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		}
 	}
+
+	_ = c.JSON(code, map[string]string{"error": message})
 }
