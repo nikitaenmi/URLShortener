@@ -1,106 +1,150 @@
 package handlers
 
 import (
-	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/domain"
+	DTO "github.com/nikitaenmi/URLShortener/internal/http-server"
 	"github.com/nikitaenmi/URLShortener/internal/lib/logger"
-	slogHandler "github.com/nikitaenmi/URLShortener/internal/lib/logger/slog/handler"
 	"github.com/nikitaenmi/URLShortener/internal/services"
 )
 
-type Url struct {
-	svc services.Url
+const (
+	idColumn          = "id"
+	originalURLColumn = "original_url"
+	aliasColumn       = "alias"
+)
+
+type URL struct {
+	svc domain.URLService
 	log logger.Logger
 	cfg config.Server
 }
 
-func NewUrl(svc services.Url, log logger.Logger, cfg config.Server) Url {
-	return Url{
+func NewURL(svc services.URL, log logger.Logger, cfg config.Server) URL {
+	return URL{
 		svc: svc,
 		log: log,
 		cfg: cfg,
 	}
 }
 
-func (h *Url) RedirectURL(c echo.Context) error {
+func (h *URL) Create(c echo.Context) error {
 	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
 
-	reqID, ok := c.Get(slogHandler.RequestIDLogKey).(string)
-	if !ok {
-		reqID = "unknown"
+	var req DTO.URLRequest
+	if err := c.Bind(&req); err != nil {
+		return domain.ErrInvalidRequest
 	}
-	fmt.Printf("ID запроса:")
-	fmt.Printf(reqID)
+	urlFromUser := req.ToDomain()
+	url, err := h.svc.Create(ctx, urlFromUser)
+	if err != nil {
+		return err
+	}
+	logWithCtx.Info("link created",
+		aliasColumn, url.Alias,
+		originalURLColumn, url.OriginalURL,
+	)
+	protocol := h.cfg.GetProtocol()
+	res := DTO.ToURLItemResponse(protocol, h.cfg.Host, h.cfg.Port, url.Alias)
+	return c.JSON(http.StatusCreated, res)
+}
+
+func (h *URL) Read(c echo.Context) error {
+	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
+
+	idStr := c.Param("id")
+	id, err := parseID(idStr)
+	if err != nil {
+		return domain.ErrInvalidID
+	}
+	url, err := h.svc.Get(ctx, domain.ByID(id))
+	if err != nil {
+		return err
+	}
+	logWithCtx.Info("url retrieved", idColumn, idStr)
+	return c.JSON(http.StatusOK, url)
+}
+
+func (h *URL) Update(c echo.Context) error {
+	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
+
+	idStr := c.Param("id")
+	id, err := parseID(idStr)
+	if err != nil {
+		return domain.ErrInvalidID
+	}
+	var req DTO.URLRequest
+	if err := c.Bind(&req); err != nil {
+		return domain.ErrInvalidRequest
+	}
+	updatedURL, err := h.svc.Update(ctx, domain.ByID(id), req.OriginalURL)
+	if err != nil {
+		return err
+	}
+	logWithCtx.Info("url updated",
+		idColumn, id,
+		originalURLColumn, req.OriginalURL,
+	)
+	return c.JSON(http.StatusOK, updatedURL)
+}
+
+func (h *URL) Delete(c echo.Context) error {
+	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
+
+	idStr := c.Param("id")
+	id, err := parseID(idStr)
+	if err != nil {
+		return domain.ErrInvalidID
+	}
+	if err := h.svc.Delete(ctx, domain.ByID(id)); err != nil {
+		return err
+	}
+	logWithCtx.Info("url deleted", idColumn, id)
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *URL) List(c echo.Context) error {
+	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
+
+	var req DTO.Paginator
+	if err := c.Bind(&req); err != nil {
+		return domain.ErrInvalidQueryParams
+	}
+
+	req.ValidateAndSetDefaults()
+
+	paginator := req.ToDomain()
+	urlList, err := h.svc.List(ctx, paginator)
+	if err != nil {
+		return err
+	}
+
+	res := DTO.ToURLListResponse(urlList)
+	logWithCtx.Info("urls retrieved")
+	return c.JSON(http.StatusOK, res)
+}
+
+func (h *URL) Redirect(c echo.Context) error {
+	ctx := c.Request().Context()
+	logWithCtx := logger.WithContext(ctx, h.log)
 
 	alias := c.Param("alias")
-	params := domain.URLFilter{
-		Alias: alias,
-	}
-
-	url, err := h.svc.Redirect(ctx, params)
+	url, err := h.svc.Get(ctx, domain.ByAlias(alias))
 	if err != nil {
-		h.log.Error("Link not found", slog.String("alias", alias), slog.String("error", err.Error()))
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "Link not found"})
+		return err
 	}
 
-	h.log.Info("Redirection", slog.String("alias", alias), slog.String("original_url", url.OriginalURL))
+	logWithCtx.Info("redirection",
+		aliasColumn, alias,
+		originalURLColumn, url.OriginalURL,
+	)
 	return c.Redirect(http.StatusMovedPermanently, url.OriginalURL)
-}
-
-func (h *Url) ShortenerURL(c echo.Context) error {
-	ctx := c.Request().Context()
-	var request struct {
-		OriginalURL string `json:"url"`
-	}
-
-	if err := c.Bind(&request); err != nil {
-		h.log.Error("Invalid request", slog.String("error", err.Error()))
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request"})
-	}
-
-	url := domain.Url{
-		OriginalURL: request.OriginalURL,
-	}
-
-	alias, err := h.svc.Shortener(ctx, url)
-	if err != nil {
-		h.log.Error("Shortener failed", slog.String("error", err.Error()))
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-	}
-
-	h.log.Info("Link created successfully!", slog.String("alias", alias))
-
-	response := map[string]string{
-		"short_url": fmt.Sprintf("http://%s:%s/%s", h.cfg.Host, h.cfg.Port, alias),
-	}
-
-	return c.JSON(http.StatusOK, response)
-}
-
-func (h *Url) DeleteURL(c echo.Context) error {
-	ctx := c.Request().Context()
-
-	reqID, ok := c.Get(slogHandler.RequestIDLogKey).(string)
-	if !ok {
-		reqID = "unknown"
-	}
-	fmt.Printf(reqID)
-
-	id := c.Param("id")
-	params := domain.URLFilter{
-		ID: id,
-	}
-	err := h.svc.Delete(ctx, params)
-
-	if err != nil {
-		h.log.Error("Failed to delete URL", slog.String("ID", id), slog.String("error", err.Error()))
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete URL"})
-	}
-
-	return c.JSON(http.StatusOK, map[string]string{"message": "URL deleted successfully"})
 }
