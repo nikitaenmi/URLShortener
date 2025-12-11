@@ -1,11 +1,10 @@
 package database
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/nikitaenmi/URLShortener/internal/config"
-	"github.com/nikitaenmi/URLShortener/internal/domain"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -15,12 +14,12 @@ func Connect(cfg config.Database) (*gorm.DB, error) {
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode)), &gorm.Config{})
 	if err != nil {
-		return nil, errors.New("Open connection error: " + err.Error())
+		return nil, fmt.Errorf("open connection error: %w", err)
 	}
 
-	err = db.AutoMigrate(&domain.Url{})
+	err = db.AutoMigrate(&URL{})
 	if err != nil {
-		return nil, errors.New("Migrate error:" + err.Error())
+		return nil, fmt.Errorf("migrate error: %w", err)
 	}
 
 	return db, nil

@@ -1,106 +1,182 @@
 package handlers
 
 import (
-	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/nikitaenmi/URLShortener/internal/config"
 	"github.com/nikitaenmi/URLShortener/internal/domain"
+	server "github.com/nikitaenmi/URLShortener/internal/http-server"
 	"github.com/nikitaenmi/URLShortener/internal/lib/logger"
-	slogHandler "github.com/nikitaenmi/URLShortener/internal/lib/logger/slog/handler"
 	"github.com/nikitaenmi/URLShortener/internal/services"
 )
 
-type Url struct {
-	svc services.Url
+const (
+	urlColumnID       = "id"
+	urlOriginalColumn = "original_url"
+	urlColumnAlias    = "alias"
+)
+
+type URL struct {
+	svc domain.URLService
 	log logger.Logger
-	cfg config.Server
+	cfg *config.App
 }
 
-func NewUrl(svc services.Url, log logger.Logger, cfg config.Server) Url {
-	return Url{
+func NewURL(svc services.URL, log logger.Logger, cfg *config.App) *URL {
+	return &URL{
 		svc: svc,
 		log: log,
 		cfg: cfg,
 	}
 }
 
-func (h *Url) RedirectURL(c echo.Context) error {
+type getURLParams struct {
+	ID int `param:"id"`
+}
+
+func (h *URL) Create(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	reqID, ok := c.Get(slogHandler.RequestIDLogKey).(string)
-	if !ok {
-		reqID = "unknown"
+	var req server.URLRequest
+	if err := c.Bind(&req); err != nil {
+		return &domain.Error{
+			Message: domain.ErrInvalidRequest.Message,
+			Code:    domain.ErrInvalidRequest.Code,
+			Details: err.Error(),
+		}
 	}
-	fmt.Printf("ID запроса:")
-	fmt.Printf(reqID)
+
+	if req.OriginalURL == "" {
+		return domain.ErrInvalidRequest
+	}
+
+	inputURL := req.ToDomain()
+	url, err := h.svc.Create(ctx, inputURL)
+	if err != nil {
+		return err
+	}
+	h.log.Info(ctx, "link created",
+		urlColumnAlias, url.Alias,
+		urlOriginalColumn, url.OriginalURL,
+	)
+	res := server.ToURLItemResponse(url)
+	return c.JSON(http.StatusCreated, res)
+}
+
+func (h *URL) Read(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	params := new(getURLParams)
+	if err := c.Bind(params); err != nil {
+		return &domain.Error{
+			Message: domain.ErrInvalidID.Message,
+			Code:    domain.ErrInvalidID.Code,
+			Details: err.Error(),
+		}
+	}
+
+	url, err := h.svc.Get(ctx, domain.URLFilter{ID: params.ID})
+	if err != nil {
+		return err
+	}
+	h.log.Info(ctx, "url retrieved", urlColumnID, params.ID)
+	return c.JSON(http.StatusOK, url)
+}
+
+func (h *URL) Update(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	params := new(getURLParams)
+	if err := c.Bind(params); err != nil {
+		return &domain.Error{
+			Message: domain.ErrInvalidID.Message,
+			Code:    domain.ErrInvalidID.Code,
+			Details: err.Error(),
+		}
+	}
+
+	var req server.URLRequest
+	if err := c.Bind(&req); err != nil {
+		return &domain.Error{
+			Message: domain.ErrInvalidRequest.Message,
+			Code:    domain.ErrInvalidRequest.Code,
+			Details: err.Error(),
+		}
+	}
+
+	if req.OriginalURL == "" {
+		return domain.ErrInvalidRequest
+	}
+
+	updatedURL, err := h.svc.Update(ctx, domain.URLFilter{ID: params.ID}, req.OriginalURL)
+	if err != nil {
+		return err
+	}
+	h.log.Info(ctx, "url updated",
+		urlColumnID, params.ID,
+		urlOriginalColumn, req.OriginalURL,
+	)
+	return c.JSON(http.StatusOK, updatedURL)
+}
+
+func (h *URL) Delete(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	params := new(getURLParams)
+	if err := c.Bind(params); err != nil {
+		return &domain.Error{
+			Message: domain.ErrInvalidID.Message,
+			Code:    domain.ErrInvalidID.Code,
+			Details: err.Error(),
+		}
+	}
+	if err := h.svc.Delete(ctx, domain.URLFilter{ID: params.ID}); err != nil {
+		return err
+	}
+	h.log.Info(ctx, "url deleted", urlColumnID, params.ID)
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *URL) List(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	var req server.Paginator
+	if err := c.Bind(&req); err != nil {
+		return &domain.Error{
+			Message: domain.ErrInvalidQueryParams.Message,
+			Code:    domain.ErrInvalidQueryParams.Code,
+			Details: err.Error(),
+		}
+	}
+
+	paginator := req.ToDomain()
+	urlList, err := h.svc.List(ctx, paginator)
+	if err != nil {
+		return err
+	}
+
+	res := server.ToURLListResponse(urlList)
+	h.log.Info(ctx, "urls retrieved")
+	return c.JSON(http.StatusOK, res)
+}
+
+func (h *URL) Redirect(c echo.Context) error {
+	ctx := c.Request().Context()
 
 	alias := c.Param("alias")
-	params := domain.URLFilter{
-		Alias: alias,
+	if alias == "" {
+		return domain.ErrInvalidRequest
 	}
 
-	url, err := h.svc.Redirect(ctx, params)
+	url, err := h.svc.Get(ctx, domain.URLFilter{Alias: alias})
 	if err != nil {
-		h.log.Error("Link not found", slog.String("alias", alias), slog.String("error", err.Error()))
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "Link not found"})
+		return err
 	}
 
-	h.log.Info("Redirection", slog.String("alias", alias), slog.String("original_url", url.OriginalURL))
+	h.log.Info(ctx, "redirection",
+		urlColumnAlias, alias,
+		urlOriginalColumn, url.OriginalURL,
+	)
 	return c.Redirect(http.StatusMovedPermanently, url.OriginalURL)
-}
-
-func (h *Url) ShortenerURL(c echo.Context) error {
-	ctx := c.Request().Context()
-	var request struct {
-		OriginalURL string `json:"url"`
-	}
-
-	if err := c.Bind(&request); err != nil {
-		h.log.Error("Invalid request", slog.String("error", err.Error()))
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request"})
-	}
-
-	url := domain.Url{
-		OriginalURL: request.OriginalURL,
-	}
-
-	alias, err := h.svc.Shortener(ctx, url)
-	if err != nil {
-		h.log.Error("Shortener failed", slog.String("error", err.Error()))
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-	}
-
-	h.log.Info("Link created successfully!", slog.String("alias", alias))
-
-	response := map[string]string{
-		"short_url": fmt.Sprintf("http://%s:%s/%s", h.cfg.Host, h.cfg.Port, alias),
-	}
-
-	return c.JSON(http.StatusOK, response)
-}
-
-func (h *Url) DeleteURL(c echo.Context) error {
-	ctx := c.Request().Context()
-
-	reqID, ok := c.Get(slogHandler.RequestIDLogKey).(string)
-	if !ok {
-		reqID = "unknown"
-	}
-	fmt.Printf(reqID)
-
-	id := c.Param("id")
-	params := domain.URLFilter{
-		ID: id,
-	}
-	err := h.svc.Delete(ctx, params)
-
-	if err != nil {
-		h.log.Error("Failed to delete URL", slog.String("ID", id), slog.String("error", err.Error()))
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete URL"})
-	}
-
-	return c.JSON(http.StatusOK, map[string]string{"message": "URL deleted successfully"})
 }

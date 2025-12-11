@@ -18,7 +18,6 @@ func RequestIDMiddleware() echo.MiddlewareFunc {
 			c.SetRequest(c.Request().WithContext(ctx))
 		},
 	}
-
 	return middleware.RequestIDWithConfig(config)
 }
 
