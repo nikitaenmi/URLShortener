@@ -13,28 +13,24 @@ func EchoRequestLogger(log Logger) echo.MiddlewareFunc {
 		LogLatency:  true,
 		LogRemoteIP: true,
 		LogError:    true,
-		HandleError: true,
+		HandleError: false,
 
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			ctx := c.Request().Context()
-			logWithContext := WithContext(ctx, log)
+
+			args := []any{
+				"method", v.Method,
+				"uri", v.URI,
+				"status", v.Status,
+				"latency", v.Latency,
+				"remote_ip", v.RemoteIP,
+			}
 
 			if v.Error == nil {
-				logWithContext.Info("HTTP request",
-					"method", v.Method,
-					"uri", v.URI,
-					"status", v.Status,
-					"latency", v.Latency,
-					"remote_ip", v.RemoteIP,
-				)
+				log.Info(ctx, "HTTP request", args...)
 			} else {
-				logWithContext.Error("HTTP request error",
-					"method", v.Method,
-					"uri", v.URI,
-					"status", v.Status,
-					"error", v.Error.Error(),
-					"latency", v.Latency,
-				)
+				errorArgs := append(args, "error", v.Error.Error())
+				log.Error(ctx, "HTTP request error", errorArgs...)
 			}
 			return nil
 		},

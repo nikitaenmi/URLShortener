@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	idColumn          = "id"
-	originalURLColumn = "original_url"
+	urlColumnID       = "id"
+	urlOriginalColumn = "original_url"
 )
 
 type URL struct {
@@ -21,14 +21,6 @@ func NewURL(db *gorm.DB) URL {
 	return URL{
 		db: db,
 	}
-}
-
-func (r URL) Create(ctx context.Context, url domain.URL) error {
-	if err := r.db.WithContext(ctx).Create(&url).Error; err != nil {
-		return fmt.Errorf("repo create error: %w", err)
-	}
-
-	return nil
 }
 
 func (r URL) buildFilterByParams(q *gorm.DB, params domain.URLFilter) *gorm.DB {
@@ -42,6 +34,13 @@ func (r URL) buildFilterByParams(q *gorm.DB, params domain.URLFilter) *gorm.DB {
 	return q
 }
 
+func (r URL) Create(ctx context.Context, url *domain.URL) error {
+	if err := r.db.WithContext(ctx).Create(url).Error; err != nil {
+		return fmt.Errorf("repo create error: %w", err)
+	}
+	return nil
+}
+
 func (r URL) Update(ctx context.Context, url *domain.URL) error {
 	params := domain.URLFilter{
 		ID: url.ID,
@@ -49,7 +48,7 @@ func (r URL) Update(ctx context.Context, url *domain.URL) error {
 	q := r.db.WithContext(ctx).Model(&domain.URL{})
 	q = r.buildFilterByParams(q, params)
 
-	res := q.Update(originalURLColumn, url.OriginalURL)
+	res := q.Update(urlOriginalColumn, url.OriginalURL)
 
 	if res.Error != nil {
 		return fmt.Errorf("failed to update URL in database: %w", res.Error)
@@ -89,21 +88,21 @@ func (r URL) Count(ctx context.Context, params domain.URLFilter) (int64, error) 
 	return count, nil
 }
 
-func (r URL) FindAll(ctx context.Context, params domain.URLFilter, paginator *domain.Paginator) ([]*domain.URL, error) {
+func (r URL) FindAll(ctx context.Context, params domain.URLFilter, paginator domain.Paginator) ([]*domain.URL, error) {
 	var urls []*domain.URL
 	q := r.db.WithContext(ctx)
 	q = r.buildFilterByParams(q, params)
 
-	if paginator == nil {
-		q = q.Limit(1)
-	} else {
-		offset := paginator.GetOffset()
-		q = q.Offset(offset)
-		limit := paginator.GetLimit()
-		q = q.Limit(limit)
+	if paginator.Limit < 1 || paginator.Limit > domain.MaxLimit {
+		paginator.Limit = domain.DefaultLimit
+	}
+	if paginator.Page < 1 {
+		paginator.Page = domain.DefaultPage
 	}
 
-	res := q.Order(idColumn + " " + "ASC").Find(&urls)
+	q = q.Offset(paginator.GetOffset()).Limit(paginator.GetLimit())
+
+	res := q.Order(urlColumnID + " " + "ASC").Find(&urls)
 	if res.Error != nil {
 		return nil, fmt.Errorf("repo find all error: %w", res.Error)
 	}

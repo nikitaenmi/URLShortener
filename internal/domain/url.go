@@ -2,7 +2,7 @@ package domain
 
 import (
 	"context"
-	"errors"
+	"net/http"
 )
 
 const (
@@ -17,16 +17,21 @@ type URL struct {
 	Alias       string
 }
 
+type URLList struct {
+	Items []*URL
+	Total int
+}
+
 type URLRepository interface {
-	Create(ctx context.Context, url URL) error
+	Create(ctx context.Context, url *URL) error
 	Update(ctx context.Context, url *URL) error
 	Delete(ctx context.Context, params URLFilter) error
 	Count(ctx context.Context, filter URLFilter) (int64, error)
-	FindAll(ctx context.Context, filter URLFilter, paginator *Paginator) ([]*URL, error)
+	FindAll(ctx context.Context, filter URLFilter, paginator Paginator) ([]*URL, error)
 }
 
 type URLService interface {
-	Create(ctx context.Context, url URL) (*URL, error)
+	Create(ctx context.Context, url *URL) (*URL, error)
 	Get(ctx context.Context, params URLFilter) (*URL, error)
 	Update(ctx context.Context, params URLFilter, newURL string) (*URL, error)
 	Delete(ctx context.Context, params URLFilter) error
@@ -36,14 +41,6 @@ type URLService interface {
 type URLFilter struct {
 	Alias string
 	ID    int
-}
-
-func ByID(id int) URLFilter {
-	return URLFilter{ID: id}
-}
-
-func ByAlias(alias string) URLFilter {
-	return URLFilter{Alias: alias}
 }
 
 type Paginator struct {
@@ -58,25 +55,29 @@ func (p Paginator) GetLimit() int {
 	return p.Limit
 }
 
-func (p Paginator) GetPage() int {
-	if p.Page <= 0 {
-		p.Page = DefaultPage
+func (p Paginator) GetOffset() int {
+	page := p.Page
+	if page < 1 {
+		page = 1
 	}
-	return p.Page
+	limit := p.GetLimit()
+	return (page - 1) * limit
 }
 
-func (p Paginator) GetOffset() int {
-	return (p.Page - 1) * p.Limit
+type Error struct {
+	Message string
+	Code    int
+	Details string
 }
 
 var (
-	ErrURLNotFound        = errors.New("url not found")
-	ErrInvalidRequest     = errors.New("invalid request")
-	ErrInvalidID          = errors.New("invalid ID format")
-	ErrInvalidQueryParams = errors.New("invalid query parameters")
+	ErrURLNotFound        = &Error{Message: "url not found", Code: http.StatusNotFound}
+	ErrInvalidID          = &Error{Message: "invalid ID format", Code: http.StatusBadRequest}
+	ErrInvalidRequest     = &Error{Message: "invalid request", Code: http.StatusBadRequest}
+	ErrInvalidQueryParams = &Error{Message: "invalid query parameters", Code: http.StatusBadRequest}
+	ErrAliasAlreadyExists = &Error{Message: "url already exists", Code: http.StatusConflict}
 )
 
-type URLList struct {
-	Items []*URL
-	Total int64
+func (e *Error) Error() string {
+	return e.Message
 }

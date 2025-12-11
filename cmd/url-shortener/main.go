@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/caarlos0/env/v11"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/labstack/echo/v4"
 	"github.com/nikitaenmi/URLShortener/internal/config"
@@ -20,13 +19,11 @@ import (
 )
 
 func main() {
-	var log logger.Logger
-	log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})) // Логгер для логов в мейне (slog)
 
-	var cfg config.App
-	err := env.Parse(&cfg)
+	cfg, err := config.Load()
 	if err != nil {
-		log.Error(".env not found")
+		log.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
 
@@ -43,12 +40,14 @@ func main() {
 		os.Exit(1)
 	}
 	svc := services.NewURL(repo, aliasGenerator)
-	handler := handlers.NewURL(svc, log, cfg.Server)
 
+	loggerWithContext := logger.NewLoggerWithContex()
 	e := echo.New()
 	e.Use(middleware.RequestIDMiddleware())
-	e.Use(logger.EchoRequestLogger(log))
+	e.Use(logger.EchoRequestLogger(loggerWithContext))
 	e.HTTPErrorHandler = middleware.HTTPErrorHandler
+
+	handler := handlers.NewURL(svc, loggerWithContext, cfg)
 
 	e.POST("/urls", handler.Create)
 	e.GET("/urls/:id", handler.Read)

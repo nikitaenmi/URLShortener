@@ -7,7 +7,9 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-const RequestIDKey = "request_id"
+type contextKey string
+
+const RequestIDKey contextKey = "request_id"
 
 func RequestIDMiddleware() echo.MiddlewareFunc {
 	config := middleware.RequestIDConfig{

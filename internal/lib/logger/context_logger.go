@@ -2,37 +2,35 @@ package logger
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/nikitaenmi/URLShortener/internal/http-server/middleware"
 )
 
-type ContextLogger struct {
-	logger Logger
-	ctx    context.Context
+type LoggerWithContex struct{}
+
+func NewLoggerWithContex() *LoggerWithContex {
+	return &LoggerWithContex{}
 }
 
-func WithContext(ctx context.Context, logger Logger) *ContextLogger {
-	return &ContextLogger{
-		logger: logger,
-		ctx:    ctx,
-	}
+func (l *LoggerWithContex) Info(ctx context.Context, msg string, args ...any) {
+	args = appendRequestIDAndArgs(ctx, args)
+	fmt.Printf("[INFO] %s %v\n", msg, args)
 }
 
-func (cl *ContextLogger) Info(msg string, args ...any) {
-	cl.logger.Info(msg, cl.appendRequestID(args)...)
+func (l *LoggerWithContex) Error(ctx context.Context, msg string, args ...any) {
+	args = appendRequestIDAndArgs(ctx, args)
+	fmt.Printf("[ERROR] %s %v\n", msg, args)
 }
 
-func (cl *ContextLogger) Error(msg string, args ...any) {
-	cl.logger.Error(msg, cl.appendRequestID(args)...)
+func (l *LoggerWithContex) Warn(ctx context.Context, msg string, args ...any) {
+	args = appendRequestIDAndArgs(ctx, args)
+	fmt.Printf("[WARN] %s %v\n", msg, args)
 }
 
-func (cl *ContextLogger) Warn(msg string, args ...any) {
-	cl.logger.Warn(msg, cl.appendRequestID(args)...)
-}
-
-func (cl *ContextLogger) appendRequestID(args []any) []any {
-	if reqID := middleware.GetRequestIDFromContext(cl.ctx); reqID != "" {
-		return append(args, "request_id", reqID)
+func appendRequestIDAndArgs(ctx context.Context, args []any) []any {
+	if reqID := middleware.GetRequestIDFromContext(ctx); reqID != "" {
+		return append([]any{"request_id", reqID}, args...)
 	}
 	return args
 }

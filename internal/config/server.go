@@ -2,6 +2,8 @@ package config
 
 import (
 	"time"
+
+	"github.com/caarlos0/env/v11"
 )
 
 const (
@@ -23,4 +25,12 @@ func (s *Server) GetProtocol() string {
 		return HTTPSProtocol
 	}
 	return HTTPProtocol
+}
+
+func Load() (*App, error) {
+	var cfg App
+	if err := env.Parse(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
 }
